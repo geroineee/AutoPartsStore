@@ -1,0 +1,53 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+			 xmlns:controls="clr-namespace:Avalonia.Notification.Controls;assembly=Notification.Avalonia"
+			 xmlns:vm="using:AutoParts_Store.UI.ViewModels"
+			 x:DataType="vm:OverviewContentViewModel"
+             x:Class="AutoParts_Store.UI.Views.OverviewContentView">
+
+	
+	<StackPanel>
+		<StackPanel Orientation="Horizontal" >
+			<!--Выбор таблицы-->
+			<ComboBox ItemsSource="{Binding TableDisplayNames}"
+                  SelectedItem="{Binding CurrentTable}"
+                  PlaceholderText="Выберите таблицу..."
+                  Width="300"/>
+			
+			<Button Content="Обновить" Command="{Binding LoadTableDataAsync}" Margin="0,0,10,0"/>
+		</StackPanel>
+
+		<ProgressBar IsIndeterminate="True"
+                     Height="4"
+                     IsVisible="{Binding IsLoading}"/>
+
+		<DataGrid Name="tableDataGrid"
+                  ItemsSource="{Binding TableData}"
+                  AutoGenerateColumns="True"
+                  IsReadOnly="True"
+                  SelectionMode="Single"
+                  Margin="10"
+				  Height="400"
+				  GridLinesVisibility="All"
+				  BorderThickness="1"
+				  BorderBrush="Black"
+				  CanUserResizeColumns="True"
+				  CanUserReorderColumns="True"
+				  CanUserSortColumns="False">
+			<DataGrid.ContextMenu>
+				<ContextMenu>
+					<MenuItem Header="Редактировать" CommandParameter="{Binding #tableDataGrid.SelectedItem}"/>
+					<MenuItem Header="Удалить" CommandParameter="{Binding #tableDataGrid.SelectedItem}"/>
+					<Separator/>
+					<MenuItem Header="Копировать" CommandParameter="{Binding #tableDataGrid.SelectedItem}"/>
+				</ContextMenu>
+			</DataGrid.ContextMenu>
+			<DataGrid.Columns></DataGrid.Columns>
+		</DataGrid>
+		
+	</StackPanel>
+	
+</UserControl>

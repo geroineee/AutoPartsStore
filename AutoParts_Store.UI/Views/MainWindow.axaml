@@ -1,0 +1,61 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        
+		xmlns:vm="using:AutoParts_Store.UI.ViewModels"
+        x:DataType="vm:MainWindowViewModel"
+        x:Class="AutoParts_Store.UI.Views.MainWindow"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="AutoParts_Store.UI">
+
+	<Window.Resources>
+		<Thickness x:Key="MenuButtonMargin">5</Thickness>
+	</Window.Resources>
+
+	<SplitView IsPaneOpen="{Binding #tglMenu.IsChecked}" DisplayMode="CompactInline" CompactPaneLength="40">
+		<!--Меню-->
+		<SplitView.Pane>
+			<StackPanel>
+				
+				<ToggleButton Name="tglMenu" Content="≡" HorizontalAlignment="Right" FontSize="20" Width="40" Height="40" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+
+				<TextBlock Text="Меню" TextAlignment="Center"/>
+
+				<Button Content="Запросы"
+						Command="{Binding ChangeContent}"
+						CommandParameter="{x:Type vm:QueriesContentViewModel}"
+						Margin="{StaticResource MenuButtonMargin}"/>
+				
+				<Button Content="Просмотр записей"
+						Command="{Binding ChangeContent}"
+						CommandParameter="{x:Type vm:OverviewContentViewModel}"
+						Margin="{StaticResource MenuButtonMargin}"/>
+				
+				<Button Content="Редактирование записей" Margin="{StaticResource MenuButtonMargin}"/>
+			</StackPanel>
+		</SplitView.Pane>
+
+		<!--Окно-->
+		<Grid RowDefinitions="50, *, 30" ColumnDefinitions=" *">
+
+			<StackPanel Name="Footer" Background="Aqua" Grid.Row="2" Grid.Column="0">
+				<TextBlock Text="Футер" TextAlignment="Center" />
+			</StackPanel>
+
+			<StackPanel Name="Header" Background="Beige" Grid.Row="0" Grid.Column="0">
+				<TextBlock Text="Заголовок" TextAlignment="Center" />
+			</StackPanel>
+
+			<StackPanel Name="Content" Background="LightGray" Grid.Row="1" Grid.Column="0">
+				<ContentControl Content="{Binding ContentViewModel}"/>
+			</StackPanel>
+
+		</Grid>
+
+	</SplitView>
+
+	
+
+</Window>

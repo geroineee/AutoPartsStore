@@ -1,0 +1,35 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+			 xmlns:vm="using:AutoParts_Store.UI.ViewModels"
+			 x:DataType="vm:QueriesContentViewModel"
+             x:Class="AutoParts_Store.UI.Views.QueriesContentView">
+
+	
+	<StackPanel>
+		<TextBlock Text="{Binding Header}" Margin="8" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+
+		<ProgressBar IsIndeterminate="True"
+                     Height="4"
+                     Margin="8,0"
+                     IsVisible="{Binding IsLoading}"/>
+		
+		<Button Content="Запрос 1" Command="{Binding LoadData}" CommandParameter="1"/>
+		<Button Content="Запрос 2" Command="{Binding LoadData}" CommandParameter="2"/>
+		
+		<DataGrid Margin="8"
+				  CanUserResizeColumns="True"
+				  CanUserReorderColumns="True"
+				  ItemsSource="{Binding Data}"
+                  AutoGenerateColumns="True"
+                  Background="WhiteSmoke"
+                  Height="400"
+                  IsReadOnly="True"
+				  BorderThickness="1"
+				  BorderBrush="Black">
+		</DataGrid>
+	</StackPanel>
+	
+</UserControl>
