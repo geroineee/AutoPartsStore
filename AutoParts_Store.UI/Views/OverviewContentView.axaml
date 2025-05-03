@@ -10,27 +10,39 @@
 
 	
 	<StackPanel>
-		<StackPanel Orientation="Horizontal" >
+		<StackPanel Orientation="Horizontal">
 			<!--Выбор таблицы-->
 			<ComboBox ItemsSource="{Binding TableDisplayNames}"
                   SelectedItem="{Binding CurrentTable}"
                   PlaceholderText="Выберите таблицу..."
-                  Width="300"/>
+				  Width="200"
+				  Margin="8"/>
+			<Button Content="Обновить" Command="{Binding LoadTableDataAsync}" Margin="8"/>
 			
-			<Button Content="Обновить" Command="{Binding LoadTableDataAsync}" Margin="0,0,10,0"/>
+			<!--Поиск по полю-->
+			<ComboBox ItemsSource="{Binding DataGridColumnsList}"
+					  PlaceholderText="Выберите поле для поиска..."
+					  Margin="8"
+					  Width="250"
+					  SelectedItem="{Binding SearchColumn}"/>
+			<TextBox Text="{Binding SearchText}" Width="205" Watermark="Введите текст для поиска" Height="10"/>
+			<Button Content="Поиск" Command="{Binding ExecuteSearch}" Margin="8"/>
 		</StackPanel>
 
 		<ProgressBar IsIndeterminate="True"
                      Height="4"
                      IsVisible="{Binding IsLoading}"/>
 
+		<controls:NotificationMessageContainer Manager="{Binding NotificationManager}"/>
+		
 		<DataGrid Name="tableDataGrid"
                   ItemsSource="{Binding TableData}"
-                  AutoGenerateColumns="True"
+                  AutoGenerateColumns="False"
                   IsReadOnly="True"
                   SelectionMode="Single"
                   Margin="10"
-				  Height="400"
+				  ColumnWidth="*"
+				  Height="380"
 				  GridLinesVisibility="All"
 				  BorderThickness="1"
 				  BorderBrush="Black"
@@ -39,13 +51,11 @@
 				  CanUserSortColumns="False">
 			<DataGrid.ContextMenu>
 				<ContextMenu>
-					<MenuItem Header="Редактировать" CommandParameter="{Binding #tableDataGrid.SelectedItem}"/>
-					<MenuItem Header="Удалить" CommandParameter="{Binding #tableDataGrid.SelectedItem}"/>
-					<Separator/>
-					<MenuItem Header="Копировать" CommandParameter="{Binding #tableDataGrid.SelectedItem}"/>
+					<MenuItem Header="Редактировать" Command="{}" CommandParameter="{Binding #tableDataGrid.SelectedItem}"/>
+					<MenuItem Header="Удалить" Command="{Binding DeleteTableDataItem}" CommandParameter="{Binding #tableDataGrid.SelectedItem}"/>
 				</ContextMenu>
 			</DataGrid.ContextMenu>
-			<DataGrid.Columns></DataGrid.Columns>
+			
 		</DataGrid>
 		
 	</StackPanel>

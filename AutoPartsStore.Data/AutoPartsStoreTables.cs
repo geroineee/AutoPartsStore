@@ -1,51 +1,447 @@
 ﻿using AutoPartsStore.Data.Context;
+using AutoPartsStore.Data;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.ObjectModel;
+using AutoPartsStore.Data.Models;
+using System.Linq;
+using System.Linq.Expressions;
 
-namespace AutoPartsStore.Data
+public class AutoPartsStoreTables
 {
-    public class AutoPartsStoreTables
+    private readonly AutopartsStoreContext _db;
+
+    public AutoPartsStoreTables(AutopartsStoreContext db)
     {
-        private readonly AutopartsStoreContext _db;
+        _db = db;
+    }
 
-        public AutoPartsStoreTables(AutopartsStoreContext db)
+    public static readonly List<TableDefinition> TableDefinitions = new()
+{
+    // Таблица Поставщики (Suppliers)
+    new TableDefinition
+    {
+        DisplayName = "Поставщики",
+        DbName = "Suppliers",
+        Columns = new List<TableColumnInfo>
         {
-            _db = db;
-        }
-        public Dictionary<string, List<TableColumnInfo>> GetTableColumnsConfig()
-        {
-            return new Dictionary<string, List<TableColumnInfo>>
+            new("ID", "SupplierId", false),
+            new("Название", "SupplierName"),
+            new("Категория", "CategoryName"), // Связь с SupplierCategory
+            new("Адрес", "SupplierAddress"),
+            new("Активен", "IsActive")
+        },
+        QueryBuilder = db => db.Suppliers
+            .Include(s => s.SupplierCategory)
+            .Select(s => new
             {
-                ["Поставщики"] = new List<TableColumnInfo>
-                {
-                    new() { DisplayName = "ID", PropertyName = "Id", IsVisible = false },
-                    new() { DisplayName = "Название", PropertyName = "CompanyName" },
-                    new() { DisplayName = "Телефон", PropertyName = "Phone" }
-                },
-                ["Товары"] = new List<TableColumnInfo>
-                {
-                    new() { DisplayName = "Артикул", PropertyName = "Article" },
-                    new() { DisplayName = "Название", PropertyName = "Name" }
-                }
-            };
-        }
+                s.SupplierId,
+                s.SupplierName,
+                s.SupplierCategory.CategoryName,
+                s.SupplierAddress,
+                s.IsActive
+            })
+    },
 
-        public Dictionary<string, string> AvailableTables => new()
+    // Таблица Категории поставщиков (SupplierCategories)
+    new TableDefinition
+    {
+        DisplayName = "Категории поставщиков",
+        DbName = "SupplierCategories",
+        Columns = new List<TableColumnInfo>
         {
-            ["Поставщики"] = "Suppliers",
-            ["Товары"] = "Products",
-            ["Заказы"] = "Orders"
-        };
-
-        public async Task<List<object>> GetTableDataAsync(string tableName)
-        {
-            return tableName switch
+            new("ID", "CategoryId", false),
+            new("Название", "CategoryName"),
+            new("Дает гарантию", "ProvidesGuarantee"),
+            new("Описание", "CategoryDescription")
+        },
+        QueryBuilder = db => db.SupplierCategories
+            .Select(c => new
             {
-                "Suppliers" => await _db.Suppliers.ToListAsync<object>(),
-                "Products" => await _db.Products.ToListAsync<object>(),
-                "Orders" => await _db.CustomerOrders.ToListAsync<object>(),
-                _ => throw new ArgumentException("Неизвестная таблица")
-            };
-        }
+                c.CategoryId,
+                c.CategoryName,
+                c.ProvidesGuarantee,
+                c.CategoryDescription
+            })
+    },
+
+    // Таблица Товары (Products)
+    new TableDefinition
+    {
+        DisplayName = "Товары",
+        DbName = "Products",
+        Columns = new List<TableColumnInfo>
+        {
+            new("ID", "ProductId", false),
+            new("Наименование", "ProductName"),
+            new("Цена продажи", "ProductSalePrice"),
+            new("Описание", "ProductDescription")
+        },
+        QueryBuilder = db => db.Products
+            .Select(p => new
+            {
+                p.ProductId,
+                p.ProductName,
+                p.ProductSalePrice,
+                p.ProductDescription
+            })
+    },
+
+    // Таблица Партии (Batches)
+    new TableDefinition
+    {
+        DisplayName = "Партии",
+        DbName = "Batches",
+        Columns = new List<TableColumnInfo>
+        {
+            new("ID", "BatchId", false),
+            new("Поставщик", "SupplierName"),
+            new("Дата доставки", "DeliveryDate"),
+            new("Описание", "BatchDescription")
+        },
+        QueryBuilder = db => db.Batches
+            .Include(b => b.BatchSupplier)
+            .Select(b => new
+            {
+                b.BatchId,
+                b.BatchSupplier.SupplierName,
+                b.DeliveryDate,
+                b.BatchDescription
+            })
+    },
+
+    // Таблица Состав партии (BatchItems)
+    new TableDefinition
+    {
+        DisplayName = "Состав партии",
+        DbName = "BatchItems",
+        Columns = new List<TableColumnInfo>
+        {
+            new("ID", "BatchItemId", false),
+            new("Товар", "ProductName"),
+            new("Количество", "BatchItemQuantity"),
+            new("Остаток", "RemainingItem")
+        },
+        QueryBuilder = db => db.BatchItems
+            .Include(bi => bi.BiProduct)
+            .Select(bi => new
+            {
+                bi.BatchItemId,
+                bi.BiProduct.ProductName,
+                bi.BatchItemQuantity,
+                bi.RemainingItem
+            })
+    },
+
+    // Таблица Клиенты (Customers)
+    new TableDefinition
+    {
+        DisplayName = "Клиенты",
+        DbName = "Customers",
+        Columns = new List<TableColumnInfo>
+        {
+            new("ID", "CustomerId", false),
+            new("Имя", "CustomerName"),
+            new("Фамилия", "CustomerSurname"),
+            new("Отчество", "CustomerPatronymic"),
+            new("Телефон", "CustomerPhone"),
+            new("Email", "CustomerEmail")
+        },
+        QueryBuilder = db => db.Customers
+            .Select(c => new
+            {
+                c.CustomerId,
+                c.CustomerName,
+                c.CustomerSurname,
+                c.CustomerPatronymic,
+                c.CustomerPhone,
+                c.CustomerEmail
+            })
+    },
+
+    // Таблица Продажи (Sales)
+    new TableDefinition
+    {
+        DisplayName = "Продажи",
+        DbName = "Sales",
+        Columns = new List<TableColumnInfo>
+        {
+            new("ID", "SaleId", false),
+            new("Клиент", "CustomerName"),
+            new("Сотрудник", "EmployeeName"),
+            new("Дата продажи", "SaleDate"),
+            new("Сумма", "SaleTotalAmount")
+        },
+        QueryBuilder = db => db.Sales
+            .Include(s => s.SaleCustomer)
+            .Include(s => s.SaleEmployee)
+            .Select(s => new
+            {
+                s.SaleId,
+                CustomerName = s.SaleCustomer.CustomerName + " " + s.SaleCustomer.CustomerSurname + " " 
+                    + s.SaleCustomer.CustomerPatronymic,
+                EmployeeName = s.SaleEmployee.EmployeeName + " " + s.SaleEmployee.EmployeeSurname + " "
+                    + s.SaleEmployee.EmployeePatronymic,
+                s.SaleDate,
+                s.SaleTotalAmount
+            })
+    },
+
+    // Таблица Состав продажи (SaleItems)
+    new TableDefinition
+    {
+        DisplayName = "Состав продажи",
+        DbName = "SaleItems",
+        Columns = new List<TableColumnInfo>
+        {
+            new("ID", "SaleItemId", false),
+            new("Товар", "ProductName"),
+            new("Количество", "SiQuantity"),
+            new("Цена", "ProductPrice")
+        },
+        QueryBuilder = db => db.SaleItems
+            .Include(si => si.SiBatchItem)
+            .ThenInclude(bi => bi.BiProduct)
+            .Select(si => new
+            {
+                si.SaleItemId,
+                si.SiBatchItem.BiProduct.ProductName,
+                si.SiQuantity,
+                ProductPrice = si.SiBatchItem.BiProduct.ProductSalePrice
+            })
+    },
+
+    // Таблица Сотрудники (Employees)
+    new TableDefinition
+    {
+        DisplayName = "Сотрудники",
+        DbName = "Employees",
+        Columns = new List<TableColumnInfo>
+        {
+            new("ID", "EmployeeId", false),
+            new("Имя", "EmployeeName"),
+            new("Фамилия", "EmployeeSurname"),
+            new("Отчество", "EmployeePatronymic"),
+            new("Должность", "EmployeePosition"),
+            new("Телефон", "EmployeePhone"),
+            new("Email", "EmployeeEmail"),
+            new("Дата найма", "HireDate"),
+            new("Дата увольнения", "FireDate")
+        },
+        QueryBuilder = db => db.Employees
+            .Select(e => new
+            {
+                e.EmployeeId,
+                e.EmployeeName,
+                e.EmployeeSurname,
+                e.EmployeePatronymic,
+                e.EmployeePosition,
+                e.EmployeePhone,
+                e.EmployeeEmail,
+                e.HireDate,
+                e.FireDate
+            })
+    },
+
+    // Таблица Заказы поставщикам (SupplierOrders)
+    new TableDefinition
+    {
+        DisplayName = "Заказы поставщикам",
+        DbName = "SupplierOrders",
+        Columns = new List<TableColumnInfo>
+        {
+            new("ID", "SupplierOrderId", false),
+            new("Менеджер", "ManagerName"),
+            new("Поставщик", "SupplierName"),
+            new("Дата заказа", "SupplierOrderDate"),
+            new("Ожидаемая дата", "ExpectedDeliveryDate"),
+            new("Сумма", "SupplierOrderTotalAmount"),
+            new("Статус", "SupplierOrderStatus")
+        },
+        QueryBuilder = db => db.SupplierOrders
+            .Include(so => so.Manager)
+            .Include(so => so.Recipient)
+            .Select(so => new
+            {
+                so.SupplierOrderId,
+                ManagerName = so.Manager.EmployeeName + " " + so.Manager.EmployeeSurname + " " + so.Manager.EmployeePatronymic,
+                so.Recipient.SupplierName,
+                so.SupplierOrderDate,
+                so.ExpectedDeliveryDate,
+                so.SupplierOrderTotalAmount,
+                so.SupplierOrderStatus
+            })
+    },
+
+    // Таблица Состав заказов поставщикам (SupplierOrderItems)
+    new TableDefinition
+    {
+        DisplayName = "Состав заказов поставщикам",
+        DbName = "SupplierOrderItems",
+        Columns = new List<TableColumnInfo>
+        {
+            new("ID заказа", "SupplierOrderId", false),
+            new("Товар", "ProductName"),
+            new("Количество", "SoiQuantity")
+        },
+        QueryBuilder = db => db.SupplierOrderItems
+            .Include(soi => soi.SoiProduct)
+            .Select(soi => new
+            {
+                soi.SoiSupplierOrderId,
+                soi.SoiProduct.ProductName,
+                soi.SoiQuantity
+            })
+    },
+
+    // Таблица Условия поставки (DeliveryTerms)
+    new TableDefinition
+    {
+        DisplayName = "Условия поставки",
+        DbName = "DeliveryTerms",
+        Columns = new List<TableColumnInfo>
+        {
+            new("Поставщик", "SupplierName"),
+            new("Товар", "ProductName"),
+            new("Цена доставки", "DeliveryPrice"),
+            new("Срок доставки (дни)", "DeliveryDays")
+        },
+        QueryBuilder = db => db.DeliveryTerms
+            .Include(dt => dt.DtSupplier)
+            .Include(dt => dt.DtProduct)
+            .Select(dt => new
+            {
+                dt.DtSupplier.SupplierName,
+                dt.DtProduct.ProductName,
+                dt.DeliveryPrice,
+                dt.DeliveryDays
+            })
+    },
+
+    // Таблица Ячейки склада (StorageCells)
+    new TableDefinition
+    {
+        DisplayName = "Ячейки склада",
+        DbName = "StorageCells",
+        Columns = new List<TableColumnInfo>
+        {
+            new("Название", "CellName"),
+            new("Описание", "LocationDescription"),
+            new("Ширина", "Width"),
+            new("Глубина", "Depth"),
+            new("Высота", "Height"),
+            new("Макс. вес", "MaxWeight")
+        },
+        QueryBuilder = db => db.StorageCells
+            .Select(sc => new
+            {
+                sc.CellName,
+                sc.LocationDescription,
+                sc.Width,
+                sc.Depth,
+                sc.Height,
+                sc.MaxWeight
+            })
+    },
+
+    // Таблица Товары на складе (StockItems)
+    new TableDefinition
+    {
+        DisplayName = "Товары на складе",
+        DbName = "StockItems",
+        Columns = new List<TableColumnInfo>
+        {
+            new("Товар", "ProductName"),
+            new("Ячейка", "StockStorageCellName"),
+            new("Количество", "StockItemQuantity")
+        },
+        QueryBuilder = db => db.StockItems
+            .Include(si => si.StockBatchItem)
+            .ThenInclude(bi => bi.BiProduct)
+            .Select(si => new
+            {
+                si.StockBatchItem.BiProduct.ProductName,
+                si.StockStorageCellName,
+                si.StockItemQuantity
+            })
+    }
+};
+
+    public Dictionary<string, string> AvailableTables =>
+        TableDefinitions.ToDictionary(t => t.DisplayName, t => t.DbName);
+
+    public List<TableColumnInfo> GetColumns(string tableName) =>
+        TableDefinitions.First(t => t.DbName == tableName).Columns;
+
+    public async Task<List<object>> GetTableDataAsync(string tableName)
+    {
+        var definition = TableDefinitions.FirstOrDefault(t => t.DisplayName == tableName)
+            ?? throw new ArgumentException("Unknown table");
+
+        return await definition.QueryBuilder(_db).ToListAsync();
+    }
+
+    public async Task<List<object>> SearchInTableAsync(string tableName, string columnDisplayName, string searchValue)
+    {
+        var definition = TableDefinitions.FirstOrDefault(t => t.DisplayName == tableName)
+            ?? throw new ArgumentException("Unknown table");
+
+        var columnInfo = definition.Columns.FirstOrDefault(c => c.DisplayName == columnDisplayName);
+        if (columnInfo == null)
+            throw new ArgumentException($"Column '{columnDisplayName}' not found in table '{tableName}'");
+
+        var query = definition.QueryBuilder(_db).AsQueryable();
+        var parameter = Expression.Parameter(query.ElementType, "x");
+
+        var property = Expression.Property(parameter, columnInfo.PropertyName);
+
+        var toStringCall = Expression.Call(property, "ToString", null, null);
+        var containsMethod = typeof(string).GetMethod("Contains", new[] { typeof(string) });
+        var containsCall = Expression.Call(toStringCall, containsMethod, Expression.Constant(searchValue));
+
+        var lambda = Expression.Lambda(containsCall, parameter);
+
+        var whereCall = Expression.Call(
+            typeof(Queryable),
+            "Where",
+            [query.ElementType],
+            query.Expression,
+            lambda);
+
+        var filteredQuery = query.Provider.CreateQuery(whereCall);
+        return await ((IQueryable<object>)filteredQuery).ToListAsync();
+    }
+
+    public async Task DeleteTableItemAsync(string tableDisplayName, object selectedItem)
+    {
+        if (selectedItem == null)
+            throw new ArgumentNullException(nameof(selectedItem));
+
+        // 1. Находим определение таблицы
+        var tableDef = TableDefinitions.First(t => t.DisplayName == tableDisplayName);
+
+        // 2. Получаем DbSet по имени таблицы из контекста
+        var dbSetProperty = _db.GetType().GetProperty(tableDef.DbName);
+        if (dbSetProperty == null)
+            throw new ArgumentException($"DbSet '{tableDef.DbName}' not found in DbContext");
+
+        var dbSet = (IQueryable)dbSetProperty.GetValue(_db);
+
+        // 3. Получаем ID (ищем свойство, заканчивающееся на "Id")
+        var idProp = selectedItem.GetType().GetProperties()
+            .FirstOrDefault(p => p.Name.EndsWith("Id", StringComparison.OrdinalIgnoreCase));
+
+        if (idProp == null)
+            throw new InvalidOperationException("ID property not found in selected item");
+
+        var idValue = idProp.GetValue(selectedItem);
+
+        // 4. Находим и удаляем сущность
+        var entityType = dbSet.ElementType;
+        var entity = await _db.FindAsync(entityType, idValue);
+
+        if (entity == null)
+            throw new InvalidOperationException("Entity not found in database");
+
+        _db.Remove(entity);
+        await _db.SaveChangesAsync();
     }
 }

@@ -14,7 +14,9 @@
 		<Thickness x:Key="MenuButtonMargin">5</Thickness>
 	</Window.Resources>
 
-	<SplitView IsPaneOpen="{Binding #tglMenu.IsChecked}" DisplayMode="CompactInline" CompactPaneLength="40">
+	<SplitView IsPaneOpen="{Binding #tglMenu.IsChecked}" DisplayMode="CompactInline"
+			   CompactPaneLength="40"
+			   OpenPaneLength="250">
 		<!--Меню-->
 		<SplitView.Pane>
 			<StackPanel>
@@ -26,19 +28,26 @@
 				<Button Content="Запросы"
 						Command="{Binding ChangeContent}"
 						CommandParameter="{x:Type vm:QueriesContentViewModel}"
-						Margin="{StaticResource MenuButtonMargin}"/>
+						Margin="{StaticResource MenuButtonMargin}"
+						HorizontalAlignment="Stretch"
+						HorizontalContentAlignment="Center"/>
 				
 				<Button Content="Просмотр записей"
 						Command="{Binding ChangeContent}"
 						CommandParameter="{x:Type vm:OverviewContentViewModel}"
-						Margin="{StaticResource MenuButtonMargin}"/>
+						Margin="{StaticResource MenuButtonMargin}"
+						HorizontalAlignment="Stretch"
+						HorizontalContentAlignment="Center"/>
 				
-				<Button Content="Редактирование записей" Margin="{StaticResource MenuButtonMargin}"/>
+				<Button Content="Редактирование записей"
+						Margin="{StaticResource MenuButtonMargin}"
+						HorizontalAlignment="Stretch"
+						HorizontalContentAlignment="Center"/>
 			</StackPanel>
 		</SplitView.Pane>
 
 		<!--Окно-->
-		<Grid RowDefinitions="50, *, 30" ColumnDefinitions=" *">
+		<Grid RowDefinitions="50, *, 30" ColumnDefinitions="*">
 
 			<StackPanel Name="Footer" Background="Aqua" Grid.Row="2" Grid.Column="0">
 				<TextBlock Text="Футер" TextAlignment="Center" />
