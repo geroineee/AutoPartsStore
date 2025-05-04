@@ -18,28 +18,35 @@ public class AutoPartsStoreTables
 {
     // Таблица Поставщики (Suppliers)
     new TableDefinition
+{
+    DisplayName = "Поставщики",
+    DbName = "Suppliers",
+    Columns = new List<TableColumnInfo>
     {
-        DisplayName = "Поставщики",
-        DbName = "Suppliers",
-        Columns = new List<TableColumnInfo>
-        {
-            new("ID", "SupplierId", false),
-            new("Название", "SupplierName"),
-            new("Категория", "CategoryName"), // Связь с SupplierCategory
-            new("Адрес", "SupplierAddress"),
-            new("Активен", "IsActive")
-        },
-        QueryBuilder = db => db.Suppliers
-            .Include(s => s.SupplierCategory)
-            .Select(s => new
-            {
-                s.SupplierId,
-                s.SupplierName,
-                s.SupplierCategory.CategoryName,
-                s.SupplierAddress,
-                s.IsActive
-            })
+        new("ID", "SupplierId", isId: true, isVisible: false),
+        new("Название", "SupplierName"),
+        new TableColumnInfo(
+            displayName: "Категория",
+            propertyName: "SupplierCategoryId", // Изменили на FK поле!
+            referenceTable: "SupplierCategories",
+            referenceIdColumn: "CategoryId",
+            referenceDisplayColumn: "CategoryName"
+        ),
+        new("Адрес", "SupplierAddress"),
+        new("Активен", "IsActive")
     },
+    QueryBuilder = db => db.Suppliers
+        .Include(s => s.SupplierCategory)
+        .Select(s => new
+        {
+            s.SupplierId,
+            s.SupplierName,
+            SupplierCategoryId = s.SupplierCategoryId, // FK для привязки
+            CategoryName = s.SupplierCategory.CategoryName, // Для отображения
+            s.SupplierAddress,
+            s.IsActive
+        })
+},
 
     // Таблица Категории поставщиков (SupplierCategories)
     new TableDefinition
@@ -48,7 +55,7 @@ public class AutoPartsStoreTables
         DbName = "SupplierCategories",
         Columns = new List<TableColumnInfo>
         {
-            new("ID", "CategoryId", false),
+            new("ID", "CategoryId", isId: true, isVisible:false),
             new("Название", "CategoryName"),
             new("Дает гарантию", "ProvidesGuarantee"),
             new("Описание", "CategoryDescription")
@@ -70,7 +77,7 @@ public class AutoPartsStoreTables
         DbName = "Products",
         Columns = new List<TableColumnInfo>
         {
-            new("ID", "ProductId", false),
+            new("ID", "ProductId", isId: true, isVisible:false),
             new("Наименование", "ProductName"),
             new("Цена продажи", "ProductSalePrice"),
             new("Описание", "ProductDescription")
@@ -92,7 +99,7 @@ public class AutoPartsStoreTables
         DbName = "Batches",
         Columns = new List<TableColumnInfo>
         {
-            new("ID", "BatchId", false),
+            new("ID", "BatchId", isId: true, isVisible: false),
             new("Поставщик", "SupplierName"),
             new("Дата доставки", "DeliveryDate"),
             new("Описание", "BatchDescription")
@@ -115,7 +122,7 @@ public class AutoPartsStoreTables
         DbName = "BatchItems",
         Columns = new List<TableColumnInfo>
         {
-            new("ID", "BatchItemId", false),
+            new("ID", "BatchItemId", isId: true, isVisible: false),
             new("Товар", "ProductName"),
             new("Количество", "BatchItemQuantity"),
             new("Остаток", "RemainingItem")
@@ -138,7 +145,7 @@ public class AutoPartsStoreTables
         DbName = "Customers",
         Columns = new List<TableColumnInfo>
         {
-            new("ID", "CustomerId", false),
+            new("ID", "CustomerId", isId: true, isVisible: false),
             new("Имя", "CustomerName"),
             new("Фамилия", "CustomerSurname"),
             new("Отчество", "CustomerPatronymic"),
@@ -164,9 +171,9 @@ public class AutoPartsStoreTables
         DbName = "Sales",
         Columns = new List<TableColumnInfo>
         {
-            new("ID", "SaleId", false),
-            new("Клиент", "CustomerName"),
-            new("Сотрудник", "EmployeeName"),
+            new("ID", "SaleId", isId: true, isVisible: false),
+            new("Клиент", "CustomerFullName"),
+            new("Сотрудник", "EmployeeFullName"),
             new("Дата продажи", "SaleDate"),
             new("Сумма", "SaleTotalAmount")
         },
@@ -176,10 +183,8 @@ public class AutoPartsStoreTables
             .Select(s => new
             {
                 s.SaleId,
-                CustomerName = s.SaleCustomer.CustomerName + " " + s.SaleCustomer.CustomerSurname + " " 
-                    + s.SaleCustomer.CustomerPatronymic,
-                EmployeeName = s.SaleEmployee.EmployeeName + " " + s.SaleEmployee.EmployeeSurname + " "
-                    + s.SaleEmployee.EmployeePatronymic,
+                CustomerFullName = s.SaleCustomer.CustomerSurname + " " + s.SaleCustomer.CustomerName + " " + s.SaleCustomer.CustomerPatronymic,
+                EmployeeFullName = s.SaleEmployee.EmployeeSurname + " " + s.SaleEmployee.EmployeeName + " " + s.SaleEmployee.EmployeePatronymic,
                 s.SaleDate,
                 s.SaleTotalAmount
             })
@@ -192,7 +197,7 @@ public class AutoPartsStoreTables
         DbName = "SaleItems",
         Columns = new List<TableColumnInfo>
         {
-            new("ID", "SaleItemId", false),
+            new("ID", "SaleItemId", isId: true, isVisible: false),
             new("Товар", "ProductName"),
             new("Количество", "SiQuantity"),
             new("Цена", "ProductPrice")
@@ -216,7 +221,7 @@ public class AutoPartsStoreTables
         DbName = "Employees",
         Columns = new List<TableColumnInfo>
         {
-            new("ID", "EmployeeId", false),
+            new("ID", "EmployeeId", isId: true, isVisible: false),
             new("Имя", "EmployeeName"),
             new("Фамилия", "EmployeeSurname"),
             new("Отчество", "EmployeePatronymic"),
@@ -248,8 +253,8 @@ public class AutoPartsStoreTables
         DbName = "SupplierOrders",
         Columns = new List<TableColumnInfo>
         {
-            new("ID", "SupplierOrderId", false),
-            new("Менеджер", "ManagerName"),
+            new("ID", "SupplierOrderId", isId: true, isVisible: false),
+            new("Менеджер", "ManagerFullName"),
             new("Поставщик", "SupplierName"),
             new("Дата заказа", "SupplierOrderDate"),
             new("Ожидаемая дата", "ExpectedDeliveryDate"),
@@ -262,7 +267,7 @@ public class AutoPartsStoreTables
             .Select(so => new
             {
                 so.SupplierOrderId,
-                ManagerName = so.Manager.EmployeeName + " " + so.Manager.EmployeeSurname + " " + so.Manager.EmployeePatronymic,
+                ManagerFullName = so.Manager.EmployeeSurname + " " + so.Manager.EmployeeName + " " + so.Manager.EmployeePatronymic,
                 so.Recipient.SupplierName,
                 so.SupplierOrderDate,
                 so.ExpectedDeliveryDate,
@@ -278,7 +283,7 @@ public class AutoPartsStoreTables
         DbName = "SupplierOrderItems",
         Columns = new List<TableColumnInfo>
         {
-            new("ID заказа", "SupplierOrderId", false),
+            new("ID заказа", "SupplierOrderId", isId: true, isVisible: false),
             new("Товар", "ProductName"),
             new("Количество", "SoiQuantity")
         },
@@ -362,8 +367,99 @@ public class AutoPartsStoreTables
                 si.StockStorageCellName,
                 si.StockItemQuantity
             })
+    },
+
+    // Таблица Возвраты клиентов (CustomerRefunds)
+    new TableDefinition
+    {
+        DisplayName = "Возвраты клиентов",
+        DbName = "CustomerRefunds",
+        Columns = new List<TableColumnInfo>
+        {
+            new("ID", "CustomerRefundId", isId: true, isVisible: false),
+            new("Товар", "ProductName"),
+            new("Количество", "CrQuantity"),
+            new("Дата возврата", "RefundDate"),
+            new("Сумма возврата", "RefundAmount"),
+            new("Бракованный", "IsDefect")
+        },
+        QueryBuilder = db => db.CustomerRefunds
+            .Include(cr => cr.CrSaleItem)
+            .ThenInclude(si => si.SiBatchItem)
+            .ThenInclude(bi => bi.BiProduct)
+            .Select(cr => new
+            {
+                cr.CustomerRefundId,
+                cr.CrSaleItem.SiBatchItem.BiProduct.ProductName,
+                cr.CrQuantity,
+                cr.RefundDate,
+                cr.RefundAmount,
+                cr.IsDefect
+            })
+    },
+
+    // Таблица Брак (Defects)
+    new TableDefinition
+    {
+        DisplayName = "Брак",
+        DbName = "Defects",
+        Columns = new List<TableColumnInfo>
+        {
+            new("ID", "DefectId", isId: true, isVisible: false),
+            new("Товар", "ProductName"),
+            new("Количество", "DefectQuantity"),
+            new("Дата обнаружения", "DetectionDate"),
+            new("Описание", "DefectDescription")
+        },
+        QueryBuilder = db => db.Defects
+            .Include(d => d.DefectBatchItem)
+            .ThenInclude(bi => bi.BiProduct)
+            .Select(d => new
+            {
+                d.DefectId,
+                d.DefectBatchItem.BiProduct.ProductName,
+                d.DefectQuantity,
+                d.DetectionDate,
+                d.DefectDescription
+            })
+    },
+
+    // Таблица Контракты поставщиков (SupplierContracts)
+    new TableDefinition
+    {
+        DisplayName = "Контракты поставщиков",
+        DbName = "SupplierContracts",
+        Columns = new List<TableColumnInfo>
+        {
+            new("ID", "ContractId", isId: true, isVisible: false),
+            new TableColumnInfo(
+                displayName: "Поставщик",
+                propertyName: "SupplierName",
+                referenceTable: "Suppliers",
+                referenceIdColumn: "SupplierId",
+                referenceDisplayColumn: "SupplierName"
+            ),
+            new("Номер контракта", "ContractNumber"),
+            new("Дата начала", "StartDate"),
+            new("Дата окончания", "EndDate"),
+            new("Условия", "Terms"),
+            new("Скидка", "Discount")
+        },
+        QueryBuilder = db => db.SupplierContracts
+            .Include(sc => sc.ContractSupplier)
+            .Select(sc => new
+            {
+                sc.ContractId,
+                sc.ContractSupplier.SupplierName,
+                sc.ContractNumber,
+                sc.StartDate,
+                sc.EndDate,
+                sc.Terms,
+                sc.Discount,
+                sc.ContractSupplier.SupplierId
+            })
     }
-};
+    };
 
     public Dictionary<string, string> AvailableTables =>
         TableDefinitions.ToDictionary(t => t.DisplayName, t => t.DbName);
@@ -443,5 +539,89 @@ public class AutoPartsStoreTables
 
         _db.Remove(entity);
         await _db.SaveChangesAsync();
+    }
+
+    public async Task UpdateItemAsync(string tableName, object updatedItem)
+    {
+        // 1. Находим определение таблицы
+        var tableDef = TableDefinitions.First(t => t.DbName == tableName);
+
+        // 2. Получаем DbSet
+        var dbSetProperty = _db.GetType().GetProperty(tableName);
+        if (dbSetProperty == null)
+            throw new ArgumentException($"Table {tableName} not found");
+
+        var dbSet = (IQueryable)dbSetProperty.GetValue(_db);
+
+        // 3. Находим ID (ищем свойство *Id)
+        var idProp = updatedItem.GetType().GetProperties()
+            .FirstOrDefault(p => p.Name.EndsWith("Id"));
+
+        if (idProp == null)
+            throw new InvalidOperationException("ID property not found");
+
+        var idValue = idProp.GetValue(updatedItem);
+
+        // 4. Находим существующую сущность
+        var entity = await _db.FindAsync(dbSet.ElementType, idValue);
+        if (entity == null)
+            throw new InvalidOperationException("Entity not found");
+
+        // 5. Копируем значения из updatedItem в entity
+        foreach (var prop in updatedItem.GetType().GetProperties())
+        {
+            if (prop.Name == "Id") continue; // Пропускаем ID
+
+            var entityProp = entity.GetType().GetProperty(prop.Name);
+            if (entityProp == null || !entityProp.CanWrite) continue;
+
+            var value = prop.GetValue(updatedItem);
+            entityProp.SetValue(entity, value);
+        }
+
+        // 6. Сохраняем
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task<object> GetItemByIdAsync(string tableName, object id)
+    {
+        var tableDef = TableDefinitions.First(t => t.DbName == tableName);
+
+        var dbSetProperty = _db.GetType().GetProperty(tableName);
+        if (dbSetProperty == null) throw new ArgumentException($"Таблица {tableName} не найдена");
+
+        var dbSet = (IQueryable)dbSetProperty.GetValue(_db);
+
+        var idColumn = tableDef.Columns.First(c => c.IsId || c.PropertyName.EndsWith("Id"));
+        var idPropertyName = idColumn.PropertyName;
+
+        var parameter = Expression.Parameter(dbSet.ElementType, "x");
+
+        var idProperty = Expression.Property(parameter, idPropertyName);
+
+        var equals = Expression.Equal(idProperty, Expression.Constant(id));
+        var lambda = Expression.Lambda(equals, parameter);
+
+        var whereMethod = typeof(Queryable).GetMethods()
+            .First(m => m.Name == "Where" && m.GetParameters().Length == 2)
+            .MakeGenericMethod(dbSet.ElementType);
+
+        var filteredQuery = (IQueryable)whereMethod.Invoke(
+            null,
+            new object[] { dbSet, lambda });
+
+        var firstOrDefaultAsyncMethod = typeof(EntityFrameworkQueryableExtensions)
+            .GetMethods()
+            .First(m => m.Name == "FirstOrDefaultAsync" && m.GetParameters().Length == 2)
+            .MakeGenericMethod(dbSet.ElementType);
+
+        var task = (Task)firstOrDefaultAsyncMethod.Invoke(
+            null,
+            [filteredQuery, default(CancellationToken)]);
+
+        await task.ConfigureAwait(false);
+
+        var resultProperty = task.GetType().GetProperty("Result");
+        return resultProperty.GetValue(task);
     }
 }

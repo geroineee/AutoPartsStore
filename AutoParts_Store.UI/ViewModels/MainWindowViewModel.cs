@@ -18,6 +18,7 @@ namespace AutoParts_Store.UI.ViewModels
         // Страницы
         private readonly QueriesContentViewModel _queriesVM;
         private readonly OverviewContentViewModel _overviewVM;
+        private readonly EditContentViewModel _editVM;
         
         public MainWindowViewModel()
         {
@@ -27,14 +28,16 @@ namespace AutoParts_Store.UI.ViewModels
 
             _queriesVM = new();
             _overviewVM = new();
+            _editVM = new();
         }
 
         public void ChangeContent(Type viewModelType)
         {
             ContentViewModel = viewModelType switch
             {
-                Type queriesContentVM when queriesContentVM == typeof(QueriesContentViewModel) => _queriesVM,
-                Type overviewContentVM when overviewContentVM == typeof(OverviewContentViewModel) => _overviewVM,
+                Type view when view == typeof(QueriesContentViewModel) => _queriesVM,
+                Type view when view == typeof(OverviewContentViewModel) => _overviewVM,
+                Type view when view == typeof(EditContentViewModel) => _editVM,
                 _ => throw new ArgumentException("Неподдерживаемый тип окна."),
             };
         }

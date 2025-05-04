@@ -6,6 +6,7 @@ using MsBox.Avalonia;
 using ReactiveUI;
 using System;
 using System.Threading.Tasks;
+using AutoPartsStore.Data.Context;
 
 namespace AutoParts_Store.UI.ViewModels;
 

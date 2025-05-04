@@ -7,6 +7,9 @@ using Avalonia.Controls;
 using Avalonia.Data;
 using System;
 using Avalonia.Notification;
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore;
 
 namespace AutoParts_Store.UI.ViewModels
 {
@@ -75,6 +78,61 @@ namespace AutoParts_Store.UI.ViewModels
             TableData = new ObservableCollection<object>();
         }
 
+        public void SwitchOnEditContent(object selectedItem)
+        {
+            if (selectedItem == null || string.IsNullOrEmpty(CurrentTable)) return;
+
+            var originalEntity = FindOriginalEntity(selectedItem, CurrentTable);
+
+            var itemCopy = CloneObject(originalEntity!);
+
+            if (originalEntity == null || itemCopy == null)
+            {
+                _currentNotification= CreateNotification("Ошибка", "Не удалось начать редактирование", NotificationManager, _currentNotification);
+                return;
+            }
+
+            MainWindowViewModel.Instance.ChangeContent(typeof(EditContentViewModel));
+
+            if (MainWindowViewModel.Instance.ContentViewModel is EditContentViewModel editVM)
+            {
+                editVM.TableName = CurrentTable;
+                editVM.CurrentItem = itemCopy;
+                editVM.OriginalEntity = originalEntity; 
+                editVM.CreateEditControls();
+            }
+        }
+
+        private object? FindOriginalEntity(object selectedItem, string tableDisplayName)
+        {
+            try
+            {
+                var tableDef = AutoPartsStoreTables.TableDefinitions
+                    .FirstOrDefault(t => t.DisplayName == tableDisplayName);
+
+                if (tableDef == null) return null;
+
+                var idColumn = tableDef.Columns.FirstOrDefault(c => c.IsId);
+                if (idColumn == null)
+                {
+                    idColumn = tableDef.Columns.FirstOrDefault(c =>
+                        c.PropertyName.EndsWith("Id", StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (idColumn == null) return null;
+                var idProperty = selectedItem.GetType().GetProperty(idColumn.PropertyName);
+                if (idProperty == null) return null;
+
+                var idValue = idProperty.GetValue(selectedItem);
+                if (idValue == null) return null;
+
+                return _tablesService.GetItemByIdAsync(tableDef.DbName, idValue).Result;
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+        }
         public async Task ExecuteSearch()
         {
             if (string.IsNullOrEmpty(SearchColumn) && string.IsNullOrEmpty(SearchText))
@@ -119,7 +177,10 @@ namespace AutoParts_Store.UI.ViewModels
         public async Task DeleteTableDataItem(object selectedItem)
         {
             if (selectedItem == null || string.IsNullOrEmpty(CurrentTable))
+            {
+                _currentNotification = CreateNotification("Предупреждение", "Необходимо выбрать запись", NotificationManager, _currentNotification);
                 return;
+            }
 
             if (!await ShowConfirmationDialog("Внимание!", $"Вы уверены что хотите удалить\n" +
                 $"элемент таблицы {CurrentTable}?"))
@@ -139,9 +200,13 @@ namespace AutoParts_Store.UI.ViewModels
 
                 await LoadTableDataAsync();
             }
+            catch (DbUpdateException ex)
+            {
+                _currentNotification = CreateNotification("Ошибка", $"Ошибка удаления записи: запись используется в других таблицах", NotificationManager, _currentNotification);
+            }
             catch (Exception ex)
             {
-                _currentNotification = CreateNotification("Ошибка", $"{ex.Message}", NotificationManager, _currentNotification);
+                _currentNotification = CreateNotification("Ошибка", $"{ex.Message}, {ex.GetType()}", NotificationManager, _currentNotification);
             }
             finally
             {
@@ -167,7 +232,10 @@ namespace AutoParts_Store.UI.ViewModels
 
         public async Task SearchInCurrentTable(string columnName, string searchValue)
         {
-            if (string.IsNullOrEmpty(CurrentTable)) return;
+            if (string.IsNullOrEmpty(CurrentTable))
+            {
+                throw new Exception("Не выбрана таблица базы данных");
+            }
 
             IsLoading = true;
             try
@@ -179,6 +247,23 @@ namespace AutoParts_Store.UI.ViewModels
             {
                 IsLoading = false;
             }
+        }
+
+        protected static object? CloneObject(object source)
+        {
+            var clone = Activator.CreateInstance(source.GetType());
+
+            foreach (var property in source.GetType().GetProperties())
+            {
+                if (property.PropertyType.IsValueType ||
+                    property.PropertyType == typeof(string))
+                {
+                    var value = property.GetValue(source);
+                    property.SetValue(clone, value);
+                }
+            }
+
+            return clone;
         }
     }
 }

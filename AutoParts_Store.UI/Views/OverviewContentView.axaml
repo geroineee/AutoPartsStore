@@ -33,7 +33,9 @@
                      Height="4"
                      IsVisible="{Binding IsLoading}"/>
 
-		<controls:NotificationMessageContainer Manager="{Binding NotificationManager}"/>
+		<Border>
+			<controls:NotificationMessageContainer Manager="{Binding NotificationManager}" />
+		</Border>
 		
 		<DataGrid Name="tableDataGrid"
                   ItemsSource="{Binding TableData}"
@@ -51,7 +53,7 @@
 				  CanUserSortColumns="False">
 			<DataGrid.ContextMenu>
 				<ContextMenu>
-					<MenuItem Header="Редактировать" Command="{}" CommandParameter="{Binding #tableDataGrid.SelectedItem}"/>
+					<MenuItem Header="Редактировать" Command="{Binding SwitchOnEditContent}" CommandParameter="{Binding #tableDataGrid.SelectedItem}"/>
 					<MenuItem Header="Удалить" Command="{Binding DeleteTableDataItem}" CommandParameter="{Binding #tableDataGrid.SelectedItem}"/>
 				</ContextMenu>
 			</DataGrid.ContextMenu>

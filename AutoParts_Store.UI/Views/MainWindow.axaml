@@ -54,10 +54,10 @@
 			</StackPanel>
 
 			<StackPanel Name="Header" Background="Beige" Grid.Row="0" Grid.Column="0">
-				<TextBlock Text="Заголовок" TextAlignment="Center" />
+				<TextBlock Text="Заголовок" TextAlignment="Center"/>
 			</StackPanel>
 
-			<StackPanel Name="Content" Background="LightGray" Grid.Row="1" Grid.Column="0">
+			<StackPanel Name="Content" Grid.Row="1" Grid.Column="0">
 				<ContentControl Content="{Binding ContentViewModel}"/>
 			</StackPanel>
 

@@ -6,6 +6,9 @@ using AutoParts_Store.UI.Views;
 
 using AutoPartsStore.Data.Context;
 using AutoPartsStore.Data;
+using System.Threading.Tasks;
+
+using Microsoft.EntityFrameworkCore;
 
 namespace AutoParts_Store.UI;
 
@@ -20,7 +23,14 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var db = new AutopartsStoreContext("S:\\source\\AutoParts_Store\\AutoPartsStore.Data\\dbsettings.json");
+            var db = new AutopartsStoreContext("S:\\source\\AutoPartsStore\\AutoPartsStore.Data\\dbsettings.json");
+            
+            Task.Run(() =>
+            {
+                using var tempCntxt = new AutopartsStoreContext("S:\\source\\AutoPartsStore\\AutoPartsStore.Data\\dbsettings.json");
+                tempCntxt.Database.OpenConnection();
+                tempCntxt.Database.CloseConnection();
+            });
 
             ViewModelBase.Initialize( new AutoPartsStoreQueries(db), new AutoPartsStoreTables(db));
 
