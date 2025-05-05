@@ -78,19 +78,13 @@ namespace AutoParts_Store.UI.ViewModels
         }
         private Control CreateReferenceControl(TableColumnInfo column)
         {
-            var idPropertyName = $"{column.ReferenceTable.Replace("ies", "y")}Id";
-            var idProperty = CurrentItem.GetType().GetProperty(idPropertyName);
-
-            if (idProperty == null)
-                return new TextBlock { Text = $"Свойство {idPropertyName} не найдено", Foreground = Brushes.Red };
-
             var vm = new ComboBoxViewModel(
                 _tablesService,
                 column.ReferenceTable,
                 column.ReferenceDisplayColumn,
                 column.ReferenceIdColumn,
                 CurrentItem,
-                idPropertyName
+                column.ForeignKeyProperty // Использовать ForeignKeyProperty здесь
             );
 
             var comboBox = new ComboBox
@@ -99,6 +93,8 @@ namespace AutoParts_Store.UI.ViewModels
                 HorizontalAlignment = HorizontalAlignment.Left,
                 DataContext = vm,
                 [!ItemsControl.ItemsSourceProperty] = new Binding("Items"),
+
+                // Привязать SelectedItem к соответствующему свойству FK
                 [!SelectingItemsControl.SelectedItemProperty] = new Binding("SelectedItem")
                 {
                     Mode = BindingMode.TwoWay
@@ -115,8 +111,22 @@ namespace AutoParts_Store.UI.ViewModels
                 })
             };
 
+            // реагировать на выбор и обновлять базовый FK
+            comboBox.SelectionChanged += (sender, args) =>
+            {
+                if (args.AddedItems.Count > 0)
+                {
+                    var selectedItem = args.AddedItems[0];
+                    var id = selectedItem?.GetType().GetProperty(column.ReferenceIdColumn)?.GetValue(selectedItem);
+
+                    // получить свойство для записи
+                    var fkProperty = CurrentItem.GetType().GetProperty(column.ForeignKeyProperty);
+                    fkProperty?.SetValue(CurrentItem, id);
+                }
+            };
             return comboBox;
         }
+
 
         private Control CreateBasicControl(TableColumnInfo column)
         {

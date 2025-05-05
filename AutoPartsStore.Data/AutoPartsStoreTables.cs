@@ -18,35 +18,37 @@ public class AutoPartsStoreTables
 {
     // Таблица Поставщики (Suppliers)
     new TableDefinition
-{
-    DisplayName = "Поставщики",
-    DbName = "Suppliers",
-    Columns = new List<TableColumnInfo>
     {
-        new("ID", "SupplierId", isId: true, isVisible: false),
-        new("Название", "SupplierName"),
-        new TableColumnInfo(
-            displayName: "Категория",
-            propertyName: "SupplierCategoryId", // Изменили на FK поле!
-            referenceTable: "SupplierCategories",
-            referenceIdColumn: "CategoryId",
-            referenceDisplayColumn: "CategoryName"
-        ),
-        new("Адрес", "SupplierAddress"),
-        new("Активен", "IsActive")
-    },
-    QueryBuilder = db => db.Suppliers
-        .Include(s => s.SupplierCategory)
-        .Select(s => new
+        DisplayName = "Поставщики",
+        DbName = "Suppliers",
+        Columns = new List<TableColumnInfo>
         {
-            s.SupplierId,
-            s.SupplierName,
-            SupplierCategoryId = s.SupplierCategoryId, // FK для привязки
-            CategoryName = s.SupplierCategory.CategoryName, // Для отображения
-            s.SupplierAddress,
-            s.IsActive
-        })
-},
+            new("ID", "SupplierId", isId: true, isVisible: false),
+            new("Название", "SupplierName"),
+            new TableColumnInfo(
+                displayName: "Категория",
+                propertyName: "CategoryName", // Свойство для отображения
+                referenceTable: "SupplierCategories",
+                referenceIdColumn: "CategoryId",
+                referenceDisplayColumn: "CategoryName",
+                foreignKeyProperty: "SupplierCategoryId" // Свойство внешнего ключа в таблице Suppliers
+            ),
+            new("Адрес", "SupplierAddress"),
+            new("Активен", "IsActive")
+        },
+        QueryBuilder = db => db.Suppliers
+            .Include(s => s.SupplierCategory)
+            .Select(s => new
+            {
+                s.SupplierId,
+                s.SupplierName,
+                SupplierCategoryId = s.SupplierCategoryId, // FK для привязки
+                CategoryName = s.SupplierCategory.CategoryName, // Для отображения
+                s.SupplierAddress,
+                s.IsActive
+            })
+    },
+
 
     // Таблица Категории поставщиков (SupplierCategories)
     new TableDefinition
@@ -434,10 +436,11 @@ public class AutoPartsStoreTables
             new("ID", "ContractId", isId: true, isVisible: false),
             new TableColumnInfo(
                 displayName: "Поставщик",
-                propertyName: "SupplierName",
+                propertyName: "SupplierName", // Displayed value
                 referenceTable: "Suppliers",
                 referenceIdColumn: "SupplierId",
-                referenceDisplayColumn: "SupplierName"
+                referenceDisplayColumn: "SupplierName",
+                foreignKeyProperty: "ContractSupplierId" // Foreign Key
             ),
             new("Номер контракта", "ContractNumber"),
             new("Дата начала", "StartDate"),
@@ -450,15 +453,16 @@ public class AutoPartsStoreTables
             .Select(sc => new
             {
                 sc.ContractId,
-                sc.ContractSupplier.SupplierName,
                 sc.ContractNumber,
                 sc.StartDate,
                 sc.EndDate,
                 sc.Terms,
                 sc.Discount,
-                sc.ContractSupplier.SupplierId
+                SupplierName = sc.ContractSupplier.SupplierName, // Displayed Value
+                ContractSupplierId = sc.ContractSupplierId // Foreign Key Value
             })
     }
+
     };
 
     public Dictionary<string, string> AvailableTables =>

@@ -1,26 +1,36 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace AutoPartsStore.Data
+﻿namespace AutoPartsStore.Data
 {
-    public class TableColumnInfo(
-        string displayName,
-        string propertyName,
-        bool isVisible = true,
-        bool isId = false,
-        string referenceTable = null,
-        string referenceDisplayColumn = null,
-        string referenceIdColumn = null)
+    public class TableColumnInfo
     {
-        public string DisplayName { get; } = displayName;
-        public string PropertyName { get; } = propertyName;
-        public bool IsVisible { get; } = isVisible;
-        public bool IsId { get; } = isId;
-        public string ReferenceTable { get; } = referenceTable;
-        public string ReferenceDisplayColumn { get; } = referenceDisplayColumn;
-        public string ReferenceIdColumn { get; } = referenceIdColumn;
+        public string DisplayName { get; }
+        public string PropertyName { get; }
+        public bool IsVisible { get; } = true;
+        public bool IsId { get; } = false;
+        public string ReferenceTable { get; }
+        public string ReferenceDisplayColumn { get; }
+        public string ReferenceIdColumn { get; }
+
+        // Добавлено для хранения имени свойства внешнего ключа
+        public string ForeignKeyProperty { get; }
+
+        public TableColumnInfo(
+            string displayName,
+            string propertyName,
+            bool isVisible = true,
+            bool isId = false,
+            string referenceTable = null,
+            string referenceDisplayColumn = null,
+            string referenceIdColumn = null,
+            string foreignKeyProperty = null) // новый параметр
+        {
+            DisplayName = displayName;
+            PropertyName = propertyName;
+            IsVisible = isVisible;
+            IsId = isId;
+            ReferenceTable = referenceTable;
+            ReferenceDisplayColumn = referenceDisplayColumn;
+            ReferenceIdColumn = referenceIdColumn;
+            ForeignKeyProperty = foreignKeyProperty ?? propertyName; // По умолчанию PropertyName, если не указано
+        }
     }
 }
