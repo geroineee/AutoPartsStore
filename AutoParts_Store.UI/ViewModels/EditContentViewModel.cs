@@ -76,12 +76,13 @@ namespace AutoParts_Store.UI.ViewModels
                 ControlsContainer.Children.Add(panel);
             }
         }
+
         private Control CreateReferenceControl(TableColumnInfo column)
         {
             var vm = new ComboBoxViewModel(
                 _tablesService,
                 column.ReferenceTable,
-                column.ReferenceDisplayColumn,
+                column.PropertyName,
                 column.ReferenceIdColumn,
                 CurrentItem,
                 column.ForeignKeyProperty // Использовать ForeignKeyProperty здесь
@@ -101,7 +102,7 @@ namespace AutoParts_Store.UI.ViewModels
                 },
                 ItemTemplate = new FuncDataTemplate<object>((item, _) =>
                 {
-                    var displayText = vm.GetDisplayText(item, column.ReferenceDisplayColumn);
+                    var displayText = vm.GetDisplayText(item, column.PropertyName);
                     return new TextBlock
                     {
                         Text = displayText,
@@ -165,6 +166,11 @@ namespace AutoParts_Store.UI.ViewModels
             {
                 _currentNotification = CreateNotification("Ошибка", ex.Message, NotificationManager, _currentNotification);
             }
+        }
+
+        public void Cancel(Type typeVM)
+        {
+            MainWindowViewModel.Instance.ChangeContent(typeVM);
         }
 
         private void CopyProperties(object source, object target)

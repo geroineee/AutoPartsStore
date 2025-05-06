@@ -14,5 +14,10 @@
 			<ContentControl Content="{Binding ControlsContainer}"/>
 		</ScrollViewer>
 
+		<StackPanel Orientation="Horizontal" Margin="8">
+			<Button Content="Сохранить" Command="{}" Width="100" Margin="5" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+			<Button Content="Отмена" Command="{Binding Cancel}" CommandParameter="{x:Type vm:OverviewContentViewModel}" Width="100" Margin="5" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+		</StackPanel>
+
 	</StackPanel>
 </UserControl>

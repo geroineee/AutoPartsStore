@@ -24,7 +24,7 @@ namespace AutoParts_Store.UI.ViewModels
         {
             Instance = this;
 
-            ContentViewModel = new ViewModelBase();
+            ContentViewModel = new OverviewContentViewModel();
 
             _queriesVM = new();
             _overviewVM = new();

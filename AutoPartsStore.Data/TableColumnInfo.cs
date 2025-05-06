@@ -2,15 +2,19 @@
 {
     public class TableColumnInfo
     {
+        /// <summary> Отображаемое имя </summary>
         public string DisplayName { get; }
+        /// <summary> Соответствующее отображаемое свойство анонимного типа </summary>
         public string PropertyName { get; }
+        /// <summary> Отображение </summary>
         public bool IsVisible { get; } = true;
+        /// <summary> Является ли ID </summary>
         public bool IsId { get; } = false;
+        /// <summary> Название ссылаемой таблицы </summary>
         public string ReferenceTable { get; }
-        public string ReferenceDisplayColumn { get; }
+        /// <summary> Название Id колонки в ссылаемой таблице </summary>
         public string ReferenceIdColumn { get; }
-
-        // Добавлено для хранения имени свойства внешнего ключа
+        /// <summary> FK в данной таблице </summary>
         public string ForeignKeyProperty { get; }
 
         public TableColumnInfo(
@@ -19,16 +23,14 @@
             bool isVisible = true,
             bool isId = false,
             string referenceTable = null,
-            string referenceDisplayColumn = null,
             string referenceIdColumn = null,
-            string foreignKeyProperty = null) // новый параметр
+            string foreignKeyProperty = null)
         {
             DisplayName = displayName;
             PropertyName = propertyName;
             IsVisible = isVisible;
             IsId = isId;
             ReferenceTable = referenceTable;
-            ReferenceDisplayColumn = referenceDisplayColumn;
             ReferenceIdColumn = referenceIdColumn;
             ForeignKeyProperty = foreignKeyProperty ?? propertyName; // По умолчанию PropertyName, если не указано
         }

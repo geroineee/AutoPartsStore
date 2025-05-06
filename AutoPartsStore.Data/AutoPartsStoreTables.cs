@@ -27,11 +27,10 @@ public class AutoPartsStoreTables
             new("Название", "SupplierName"),
             new TableColumnInfo(
                 displayName: "Категория",
-                propertyName: "CategoryName", // Свойство для отображения
+                propertyName: "CategoryName",
                 referenceTable: "SupplierCategories",
                 referenceIdColumn: "CategoryId",
-                referenceDisplayColumn: "CategoryName",
-                foreignKeyProperty: "SupplierCategoryId" // Свойство внешнего ключа в таблице Suppliers
+                foreignKeyProperty: "SupplierCategoryId"
             ),
             new("Адрес", "SupplierAddress"),
             new("Активен", "IsActive")
@@ -42,8 +41,8 @@ public class AutoPartsStoreTables
             {
                 s.SupplierId,
                 s.SupplierName,
-                SupplierCategoryId = s.SupplierCategoryId, // FK для привязки
-                CategoryName = s.SupplierCategory.CategoryName, // Для отображения
+                s.SupplierCategoryId,
+                s.SupplierCategory.CategoryName,
                 s.SupplierAddress,
                 s.IsActive
             })
@@ -102,7 +101,7 @@ public class AutoPartsStoreTables
         Columns = new List<TableColumnInfo>
         {
             new("ID", "BatchId", isId: true, isVisible: false),
-            new("Поставщик", "SupplierName"),
+            new("Поставщик", "SupplierName", referenceTable: "Suppliers", referenceIdColumn: "SupplierId", foreignKeyProperty: "BatchSupplierId"),
             new("Дата доставки", "DeliveryDate"),
             new("Описание", "BatchDescription")
         },
@@ -439,7 +438,6 @@ public class AutoPartsStoreTables
                 propertyName: "SupplierName", // Displayed value
                 referenceTable: "Suppliers",
                 referenceIdColumn: "SupplierId",
-                referenceDisplayColumn: "SupplierName",
                 foreignKeyProperty: "ContractSupplierId" // Foreign Key
             ),
             new("Номер контракта", "ContractNumber"),
