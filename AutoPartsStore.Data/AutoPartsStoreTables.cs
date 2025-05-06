@@ -48,7 +48,6 @@ public class AutoPartsStoreTables
             })
     },
 
-
     // Таблица Категории поставщиков (SupplierCategories)
     new TableDefinition
     {
@@ -100,7 +99,7 @@ public class AutoPartsStoreTables
         DbName = "Batches",
         Columns = new List<TableColumnInfo>
         {
-            new("ID", "BatchId", isId: true, isVisible: false),
+            new("Номер партии", "BatchId", isId: true),
             new("Поставщик", "SupplierName", referenceTable: "Suppliers", referenceIdColumn: "SupplierId", foreignKeyProperty: "BatchSupplierId"),
             new("Дата доставки", "DeliveryDate"),
             new("Описание", "BatchDescription")
@@ -112,7 +111,8 @@ public class AutoPartsStoreTables
                 b.BatchId,
                 b.BatchSupplier.SupplierName,
                 b.DeliveryDate,
-                b.BatchDescription
+                b.BatchDescription,
+                BatchSupplierId = b.BatchSupplierId
             })
     },
 
@@ -124,7 +124,8 @@ public class AutoPartsStoreTables
         Columns = new List<TableColumnInfo>
         {
             new("ID", "BatchItemId", isId: true, isVisible: false),
-            new("Товар", "ProductName"),
+            new("Номер партии", "BiBatchId", referenceTable: "Batches", referenceIdColumn: "BatchId"),
+            new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "BiProductId"),
             new("Количество", "BatchItemQuantity"),
             new("Остаток", "RemainingItem")
         },
@@ -133,9 +134,11 @@ public class AutoPartsStoreTables
             .Select(bi => new
             {
                 bi.BatchItemId,
+                bi.BiBatchId,
                 bi.BiProduct.ProductName,
                 bi.BatchItemQuantity,
-                bi.RemainingItem
+                bi.RemainingItem,
+                bi.BiProductId
             })
     },
 
@@ -173,8 +176,8 @@ public class AutoPartsStoreTables
         Columns = new List<TableColumnInfo>
         {
             new("ID", "SaleId", isId: true, isVisible: false),
-            new("Клиент", "CustomerFullName"),
-            new("Сотрудник", "EmployeeFullName"),
+            new("Клиент", "CustomerSurname", referenceTable: "Customers", referenceIdColumn: "CustomerId", foreignKeyProperty: "SaleCustomerId"),
+            new("Сотрудник", "EmployeeSurname", referenceTable: "Employees", referenceIdColumn: "EmployeeId", foreignKeyProperty: "SaleEmployeeId"),
             new("Дата продажи", "SaleDate"),
             new("Сумма", "SaleTotalAmount")
         },
@@ -184,8 +187,8 @@ public class AutoPartsStoreTables
             .Select(s => new
             {
                 s.SaleId,
-                CustomerFullName = s.SaleCustomer.CustomerSurname + " " + s.SaleCustomer.CustomerName + " " + s.SaleCustomer.CustomerPatronymic,
-                EmployeeFullName = s.SaleEmployee.EmployeeSurname + " " + s.SaleEmployee.EmployeeName + " " + s.SaleEmployee.EmployeePatronymic,
+                CustomerSurname = s.SaleCustomer.CustomerSurname + " " + s.SaleCustomer.CustomerName + " " + s.SaleCustomer.CustomerPatronymic,
+                EmployeeSurname = s.SaleEmployee.EmployeeSurname + " " + s.SaleEmployee.EmployeeName + " " + s.SaleEmployee.EmployeePatronymic,
                 s.SaleDate,
                 s.SaleTotalAmount
             })
@@ -198,10 +201,9 @@ public class AutoPartsStoreTables
         DbName = "SaleItems",
         Columns = new List<TableColumnInfo>
         {
-            new("ID", "SaleItemId", isId: true, isVisible: false),
-            new("Товар", "ProductName"),
-            new("Количество", "SiQuantity"),
-            new("Цена", "ProductPrice")
+            new("Номер продажи", "SaleItemId", isId: true),
+            new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "SiBatchItemId"),
+            new("Количество", "SiQuantity")
         },
         QueryBuilder = db => db.SaleItems
             .Include(si => si.SiBatchItem)
@@ -255,8 +257,8 @@ public class AutoPartsStoreTables
         Columns = new List<TableColumnInfo>
         {
             new("ID", "SupplierOrderId", isId: true, isVisible: false),
-            new("Менеджер", "ManagerFullName"),
-            new("Поставщик", "SupplierName"),
+            new("Менеджер", "EmployeeSurname",  referenceTable: "Employees", referenceIdColumn: "EmployeeId", foreignKeyProperty: "ManagerId"),
+            new("Поставщик", "SupplierName", referenceTable: "Suppliers", referenceIdColumn: "SupplierId", foreignKeyProperty: "RecipientId"),
             new("Дата заказа", "SupplierOrderDate"),
             new("Ожидаемая дата", "ExpectedDeliveryDate"),
             new("Сумма", "SupplierOrderTotalAmount"),
@@ -268,12 +270,13 @@ public class AutoPartsStoreTables
             .Select(so => new
             {
                 so.SupplierOrderId,
-                ManagerFullName = so.Manager.EmployeeSurname + " " + so.Manager.EmployeeName + " " + so.Manager.EmployeePatronymic,
+                EmployeeSurname = so.Manager.EmployeeSurname + " " + so.Manager.EmployeeName + " " + so.Manager.EmployeePatronymic,
                 so.Recipient.SupplierName,
                 so.SupplierOrderDate,
                 so.ExpectedDeliveryDate,
                 so.SupplierOrderTotalAmount,
-                so.SupplierOrderStatus
+                so.SupplierOrderStatus,
+                so.RecipientId
             })
     },
 
@@ -284,8 +287,8 @@ public class AutoPartsStoreTables
         DbName = "SupplierOrderItems",
         Columns = new List<TableColumnInfo>
         {
-            new("ID заказа", "SupplierOrderId", isId: true, isVisible: false),
-            new("Товар", "ProductName"),
+            new("Номер заказа", "SoiSupplierOrderId", referenceTable: "SupplierOrders", referenceIdColumn: "SoiSupplierOrderId", isId: true),
+            new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "SoiProductId"),
             new("Количество", "SoiQuantity")
         },
         QueryBuilder = db => db.SupplierOrderItems
@@ -294,7 +297,8 @@ public class AutoPartsStoreTables
             {
                 soi.SoiSupplierOrderId,
                 soi.SoiProduct.ProductName,
-                soi.SoiQuantity
+                soi.SoiQuantity,
+                soi.SoiProductId
             })
     },
 
@@ -305,8 +309,8 @@ public class AutoPartsStoreTables
         DbName = "DeliveryTerms",
         Columns = new List<TableColumnInfo>
         {
-            new("Поставщик", "SupplierName"),
-            new("Товар", "ProductName"),
+            new("Поставщик", "SupplierName", referenceTable: "Suppliers", referenceIdColumn: "SupplierId", foreignKeyProperty: "DtSupplierId", isId: true),
+            new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "DtProductId"),
             new("Цена доставки", "DeliveryPrice"),
             new("Срок доставки (дни)", "DeliveryDays")
         },
@@ -318,7 +322,9 @@ public class AutoPartsStoreTables
                 dt.DtSupplier.SupplierName,
                 dt.DtProduct.ProductName,
                 dt.DeliveryPrice,
-                dt.DeliveryDays
+                dt.DeliveryDays,
+                dt.DtSupplierId,
+                dt.DtProductId
             })
     },
 
@@ -329,6 +335,7 @@ public class AutoPartsStoreTables
         DbName = "StorageCells",
         Columns = new List<TableColumnInfo>
         {
+            new("ID", "CellId", isId: true, isVisible: false),
             new("Название", "CellName"),
             new("Описание", "LocationDescription"),
             new("Ширина", "Width"),
@@ -339,6 +346,7 @@ public class AutoPartsStoreTables
         QueryBuilder = db => db.StorageCells
             .Select(sc => new
             {
+                sc.CellId,
                 sc.CellName,
                 sc.LocationDescription,
                 sc.Width,
@@ -355,8 +363,8 @@ public class AutoPartsStoreTables
         DbName = "StockItems",
         Columns = new List<TableColumnInfo>
         {
-            new("Товар", "ProductName"),
-            new("Ячейка", "StockStorageCellName"),
+            new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "StockBatchItemId", isId: true),
+            new("Ячейка", "CellName", referenceTable: "StorageCells", referenceIdColumn: "StorageCellId", foreignKeyProperty: "StockStorageCellId"),
             new("Количество", "StockItemQuantity")
         },
         QueryBuilder = db => db.StockItems
@@ -365,8 +373,10 @@ public class AutoPartsStoreTables
             .Select(si => new
             {
                 si.StockBatchItem.BiProduct.ProductName,
-                si.StockStorageCellName,
-                si.StockItemQuantity
+                si.StockStorageCellId,
+                si.StockStorageCell.CellName,
+                si.StockItemQuantity,
+                si.StockBatchItemId
             })
     },
 
@@ -378,7 +388,7 @@ public class AutoPartsStoreTables
         Columns = new List<TableColumnInfo>
         {
             new("ID", "CustomerRefundId", isId: true, isVisible: false),
-            new("Товар", "ProductName"),
+            new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "CrSaleItemId"),
             new("Количество", "CrQuantity"),
             new("Дата возврата", "RefundDate"),
             new("Сумма возврата", "RefundAmount"),
@@ -407,7 +417,8 @@ public class AutoPartsStoreTables
         Columns = new List<TableColumnInfo>
         {
             new("ID", "DefectId", isId: true, isVisible: false),
-            new("Товар", "ProductName"),
+            new("Номер партии", "BatchItemId", referenceTable: "BatchItems", referenceIdColumn: "BatchItemId", foreignKeyProperty: "DefectBatchItemId"),
+            new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "DefectBatchItemId"),
             new("Количество", "DefectQuantity"),
             new("Дата обнаружения", "DetectionDate"),
             new("Описание", "DefectDescription")
@@ -418,6 +429,7 @@ public class AutoPartsStoreTables
             .Select(d => new
             {
                 d.DefectId,
+                d.DefectBatchItem.BatchItemId,
                 d.DefectBatchItem.BiProduct.ProductName,
                 d.DefectQuantity,
                 d.DetectionDate,
@@ -435,10 +447,10 @@ public class AutoPartsStoreTables
             new("ID", "ContractId", isId: true, isVisible: false),
             new TableColumnInfo(
                 displayName: "Поставщик",
-                propertyName: "SupplierName", // Displayed value
+                propertyName: "SupplierName",
                 referenceTable: "Suppliers",
                 referenceIdColumn: "SupplierId",
-                foreignKeyProperty: "ContractSupplierId" // Foreign Key
+                foreignKeyProperty: "ContractSupplierId"
             ),
             new("Номер контракта", "ContractNumber"),
             new("Дата начала", "StartDate"),
@@ -456,12 +468,11 @@ public class AutoPartsStoreTables
                 sc.EndDate,
                 sc.Terms,
                 sc.Discount,
-                SupplierName = sc.ContractSupplier.SupplierName, // Displayed Value
-                ContractSupplierId = sc.ContractSupplierId // Foreign Key Value
+                SupplierName = sc.ContractSupplier.SupplierName,
+                ContractSupplierId = sc.ContractSupplierId
             })
     }
-
-    };
+};
 
     public Dictionary<string, string> AvailableTables =>
         TableDefinitions.ToDictionary(t => t.DisplayName, t => t.DbName);

@@ -8,6 +8,8 @@ namespace AutoPartsStore.Data.Models;
 /// </summary>
 public partial class StorageCell
 {
+    public int CellId { get; set; }
+
     public string CellName { get; set; } = null!;
 
     public string LocationDescription { get; set; } = null!;

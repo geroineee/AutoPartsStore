@@ -2,12 +2,16 @@
 using System.Collections.Generic;
 using AutoPartsStore.Data.Models;
 using Microsoft.EntityFrameworkCore;
-using AutoPartsStore.Data.Models.Views;
 
 namespace AutoPartsStore.Data.Context;
 
 public partial class AutopartsStoreContext : DbContext
 {
+    public AutopartsStoreContext(DbContextOptions<AutopartsStoreContext> options)
+        : base(options)
+    {
+    }
+
     public virtual DbSet<AvailableProductOnStorageView> AvailableProductOnStorageViews { get; set; }
 
     public virtual DbSet<Batch> Batches { get; set; }
@@ -71,20 +75,6 @@ public partial class AutopartsStoreContext : DbContext
             entity
                 .HasNoKey()
                 .ToView("available_product_on_storage_view");
-
-            entity.Property(e => e.BatchItemId).HasColumnName("batch_item_id");
-            entity.Property(e => e.DeliveryDate)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("timestamp")
-                .HasColumnName("delivery_date");
-            entity.Property(e => e.ProductId).HasColumnName("product_id");
-            entity.Property(e => e.ProductName)
-                .HasMaxLength(100)
-                .HasColumnName("product_name");
-            entity.Property(e => e.RemainingItem).HasColumnName("remaining_item");
-            entity.Property(e => e.StockStorageCellName)
-                .HasMaxLength(10)
-                .HasColumnName("stock_storage_cell_name");
         });
 
         modelBuilder.Entity<Batch>(entity =>
@@ -487,35 +477,36 @@ public partial class AutopartsStoreContext : DbContext
 
         modelBuilder.Entity<StockItem>(entity =>
         {
-            entity.HasKey(e => new { e.StockBatchItemId, e.StockStorageCellName })
+            entity.HasKey(e => new { e.StockBatchItemId, e.StockStorageCellId })
                 .HasName("PRIMARY")
                 .HasAnnotation("MySql:IndexPrefixLength", new[] { 0, 0 });
 
             entity.ToTable("stock_item", tb => tb.HasComment("Товар на складе"));
 
-            entity.HasIndex(e => e.StockStorageCellName, "stock_storage_cell_name");
+            entity.HasIndex(e => e.StockStorageCellId, "stock_item_ibfk_2");
 
             entity.Property(e => e.StockBatchItemId).HasColumnName("stock_batch_item_id");
-            entity.Property(e => e.StockStorageCellName)
-                .HasMaxLength(10)
-                .HasColumnName("stock_storage_cell_name");
+            entity.Property(e => e.StockStorageCellId).HasColumnName("stock_storage_cell_id");
             entity.Property(e => e.StockItemQuantity).HasColumnName("stock_item_quantity");
 
             entity.HasOne(d => d.StockBatchItem).WithMany(p => p.StockItems)
                 .HasForeignKey(d => d.StockBatchItemId)
                 .HasConstraintName("stock_item_ibfk_1");
 
-            entity.HasOne(d => d.StockStorageCellNameNavigation).WithMany(p => p.StockItems)
-                .HasForeignKey(d => d.StockStorageCellName)
+            entity.HasOne(d => d.StockStorageCell).WithMany(p => p.StockItems)
+                .HasForeignKey(d => d.StockStorageCellId)
                 .HasConstraintName("stock_item_ibfk_2");
         });
 
         modelBuilder.Entity<StorageCell>(entity =>
         {
-            entity.HasKey(e => e.CellName).HasName("PRIMARY");
+            entity.HasKey(e => e.CellId).HasName("PRIMARY");
 
             entity.ToTable("storage_cell", tb => tb.HasComment("Ячейка склада"));
 
+            entity.HasIndex(e => e.CellName, "cell_name").IsUnique();
+
+            entity.Property(e => e.CellId).HasColumnName("cell_id");
             entity.Property(e => e.CellName)
                 .HasMaxLength(10)
                 .HasColumnName("cell_name");

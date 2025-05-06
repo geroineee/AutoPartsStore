@@ -14,7 +14,7 @@ public partial class Product
 
     public string? ProductDescription { get; set; }
 
-    public decimal? ProductSalePrice { get; set; }
+    public decimal ProductSalePrice { get; set; }
 
     public virtual ICollection<BatchItem> BatchItems { get; set; } = new List<BatchItem>();
 

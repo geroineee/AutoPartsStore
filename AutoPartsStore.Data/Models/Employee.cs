@@ -18,9 +18,9 @@ public partial class Employee
 
     public string EmployeePosition { get; set; } = null!;
 
-    public string EmployeePhone { get; set; } = null!;
+    public string? EmployeePhone { get; set; }
 
-    public string EmployeeEmail { get; set; } = null!;
+    public string? EmployeeEmail { get; set; }
 
     public DateOnly? HireDate { get; set; }
 
