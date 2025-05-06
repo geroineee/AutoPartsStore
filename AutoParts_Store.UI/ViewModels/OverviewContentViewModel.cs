@@ -285,16 +285,19 @@ namespace AutoParts_Store.UI.ViewModels
 
         protected static object? CloneObject(object source)
         {
-            var clone = Activator.CreateInstance(source.GetType());
+            if (source == null)
+                return null;
 
-            foreach (var property in source.GetType().GetProperties())
+            var type = source.GetType();
+            var clone = Activator.CreateInstance(type);
+
+            foreach (var property in type.GetProperties())
             {
-                if (property.PropertyType.IsValueType ||
-                    property.PropertyType == typeof(string))
-                {
-                    var value = property.GetValue(source);
-                    property.SetValue(clone, value);
-                }
+                if (!property.CanWrite)
+                    continue;
+
+                var value = property.GetValue(source);
+                property.SetValue(clone, value);
             }
 
             return clone;

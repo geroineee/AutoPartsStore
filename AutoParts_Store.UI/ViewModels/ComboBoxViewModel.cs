@@ -1,19 +1,26 @@
 ﻿using AutoParts_Store.UI.ViewModels;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading.Tasks;
 using System;
 using ReactiveUI;
-using System.Linq;
 
 public class ComboBoxViewModel : ViewModelBase
 {
     public ObservableCollection<object> Items { get; } = new();
     private object _selectedItem;
+    private bool _isLoading;
 
     public object SelectedItem
     {
         get => _selectedItem;
         set => this.RaiseAndSetIfChanged(ref _selectedItem, value);
+    }
+
+    public bool IsLoading
+    {
+        get => _isLoading;
+        set => this.RaiseAndSetIfChanged(ref _isLoading, value);
     }
 
     public ComboBoxViewModel(
@@ -24,9 +31,31 @@ public class ComboBoxViewModel : ViewModelBase
         object entity,
         string idPropertyName)
     {
-        string referenceTableDisplayName = AutoPartsStoreTables.TableDefinitions.First(t => t.DbName == referenceTable).DisplayName;
+        // Запускаем загрузку асинхронно
+        InitializeAsync(tablesService, referenceTable, displayColumn, idColumn, entity, idPropertyName)
+            .ConfigureAwait(false);
+    }
 
-        _ = LoadItems(tablesService, referenceTableDisplayName, displayColumn, idColumn, entity, idPropertyName);
+    private async Task InitializeAsync(
+        AutoPartsStoreTables tablesService,
+        string referenceTable,
+        string displayColumn,
+        string idColumn,
+        object entity,
+        string idPropertyName)
+    {
+        try
+        {
+            IsLoading = true;
+            string referenceTableDisplayName = AutoPartsStoreTables.TableDefinitions
+                .First(t => t.DbName == referenceTable).DisplayName;
+
+            await LoadItems(tablesService, referenceTableDisplayName, displayColumn, idColumn, entity, idPropertyName);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     private async Task LoadItems(
@@ -39,26 +68,34 @@ public class ComboBoxViewModel : ViewModelBase
     {
         try
         {
+            Console.WriteLine($"Начало загрузки данных для {referenceTableDisplayName}");
+
             var items = await tablesService.GetTableDataAsync(referenceTableDisplayName);
+            Console.WriteLine($"Получено {items.Count} элементов");
+
             var currentId = entity.GetType().GetProperty(idPropertyName)?.GetValue(entity);
+            Console.WriteLine($"Текущий ID: {currentId}");
 
-            Items.Clear();
-
-            // Временная переменная для хранения найденного элемента
-            object matchedItem = null;
-
-            foreach (var item in items)
+            // Используем Dispatcher или аналогичный механизм для обновления UI
+            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
             {
-                Items.Add(item);
-                var itemId = item.GetType().GetProperty(idColumn)?.GetValue(item);
-                if (itemId?.Equals(currentId) == true)
-                {
-                    matchedItem = item;
-                }
-            }
+                Items.Clear();
 
-            // Устанавливаем SelectedItem после полной загрузки
-            SelectedItem = matchedItem;
+                object matchedItem = null;
+                foreach (var item in items)
+                {
+                    Items.Add(item);
+                    var itemId = item.GetType().GetProperty(idColumn)?.GetValue(item);
+                    if (itemId?.Equals(currentId) == true)
+                    {
+                        matchedItem = item;
+                        Console.WriteLine($"Найден соответствующий элемент: {item}");
+                    }
+                }
+
+                SelectedItem = matchedItem;
+                Console.WriteLine($"Установлен SelectedItem: {SelectedItem != null}");
+            });
         }
         catch (Exception ex)
         {

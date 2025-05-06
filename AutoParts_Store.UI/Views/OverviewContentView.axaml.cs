@@ -11,8 +11,6 @@ public partial class OverviewContentView : UserControl
     public OverviewContentView()
     {
         InitializeComponent();
-
-        DataContext = new OverviewContentViewModel();
     }
 
     protected override void OnDataContextChanged(EventArgs e)

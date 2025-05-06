@@ -9,6 +9,8 @@ public class AutoPartsStoreTables
 {
     private readonly AutopartsStoreContext _db;
 
+    private static readonly SemaphoreSlim _asyncLock = new SemaphoreSlim(1, 1);
+
     public AutoPartsStoreTables(AutopartsStoreContext db)
     {
         _db = db;
@@ -505,246 +507,294 @@ public class AutoPartsStoreTables
 
     public async Task<List<object>> GetTableDataAsync(string tableName)
     {
-        var definition = TableDefinitions.FirstOrDefault(t => t.DisplayName == tableName)
-            ?? throw new ArgumentException("Unknown table");
+        await _asyncLock.WaitAsync();
+        try
+        {
+            var definition = TableDefinitions.FirstOrDefault(t => t.DisplayName == tableName)
+                ?? throw new ArgumentException("Unknown table");
 
-        return await definition.QueryBuilder(_db).ToListAsync();
+            return await definition.QueryBuilder(_db).ToListAsync();
+        }
+        finally
+        {
+            _asyncLock.Release();
+        }
     }
 
     public async Task<List<object>> SearchInTableAsync(string tableName, string columnDisplayName, string searchValue)
     {
-        var definition = TableDefinitions.FirstOrDefault(t => t.DisplayName == tableName)
+        await _asyncLock.WaitAsync();
+        try
+        {
+            var definition = TableDefinitions.FirstOrDefault(t => t.DisplayName == tableName)
             ?? throw new ArgumentException("Unknown table");
 
-        var columnInfo = definition.Columns.FirstOrDefault(c => c.DisplayName == columnDisplayName);
-        if (columnInfo == null)
-            throw new ArgumentException($"Column '{columnDisplayName}' not found in table '{tableName}'");
+            var columnInfo = definition.Columns.FirstOrDefault(c => c.DisplayName == columnDisplayName);
+            if (columnInfo == null)
+                throw new ArgumentException($"Column '{columnDisplayName}' not found in table '{tableName}'");
 
-        var query = definition.QueryBuilder(_db).AsQueryable();
-        var parameter = Expression.Parameter(query.ElementType, "x");
+            var query = definition.QueryBuilder(_db).AsQueryable();
+            var parameter = Expression.Parameter(query.ElementType, "x");
 
-        var property = Expression.Property(parameter, columnInfo.PropertyName);
+            var property = Expression.Property(parameter, columnInfo.PropertyName);
 
-        var toStringCall = Expression.Call(property, "ToString", null, null);
-        var containsMethod = typeof(string).GetMethod("Contains", new[] { typeof(string) });
-        var containsCall = Expression.Call(toStringCall, containsMethod, Expression.Constant(searchValue));
+            var toStringCall = Expression.Call(property, "ToString", null, null);
+            var containsMethod = typeof(string).GetMethod("Contains", new[] { typeof(string) });
+            var containsCall = Expression.Call(toStringCall, containsMethod, Expression.Constant(searchValue));
 
-        var lambda = Expression.Lambda(containsCall, parameter);
+            var lambda = Expression.Lambda(containsCall, parameter);
 
-        var whereCall = Expression.Call(
-            typeof(Queryable),
-            "Where",
-            [query.ElementType],
-            query.Expression,
-            lambda);
+            var whereCall = Expression.Call(
+                typeof(Queryable),
+                "Where",
+                [query.ElementType],
+                query.Expression,
+                lambda);
 
-        var filteredQuery = query.Provider.CreateQuery(whereCall);
-        return await ((IQueryable<object>)filteredQuery).ToListAsync();
+            var filteredQuery = query.Provider.CreateQuery(whereCall);
+            return await ((IQueryable<object>)filteredQuery).ToListAsync();
+        }
+        finally
+        {
+            _asyncLock.Release();
+        }
     }
 
     public async Task DeleteTableItemAsync(string tableDisplayName, object selectedItem)
     {
-        if (selectedItem == null)
-            throw new ArgumentNullException(nameof(selectedItem));
+        await _asyncLock.WaitAsync();
+        try
+        {
+            if (selectedItem == null)
+                throw new ArgumentNullException(nameof(selectedItem));
 
-        // 1. Находим определение таблицы
-        var tableDef = TableDefinitions.First(t => t.DisplayName == tableDisplayName);
+            // 1. Находим определение таблицы
+            var tableDef = TableDefinitions.First(t => t.DisplayName == tableDisplayName);
 
-        // 2. Получаем DbSet по имени таблицы из контекста
-        var dbSetProperty = _db.GetType().GetProperty(tableDef.DbName);
-        if (dbSetProperty == null)
-            throw new ArgumentException($"DbSet '{tableDef.DbName}' not found in DbContext");
+            // 2. Получаем DbSet по имени таблицы из контекста
+            var dbSetProperty = _db.GetType().GetProperty(tableDef.DbName);
+            if (dbSetProperty == null)
+                throw new ArgumentException($"DbSet '{tableDef.DbName}' not found in DbContext");
 
-        var dbSet = (IQueryable)dbSetProperty.GetValue(_db);
+            var dbSet = (IQueryable)dbSetProperty.GetValue(_db);
 
-        // 3. Получаем ID (ищем свойство, заканчивающееся на "Id")
-        var idProp = selectedItem.GetType().GetProperties()
-            .FirstOrDefault(p => p.Name.EndsWith("Id", StringComparison.OrdinalIgnoreCase));
+            // 3. Получаем ID (ищем свойство, заканчивающееся на "Id")
+            var idProp = selectedItem.GetType().GetProperties()
+                .FirstOrDefault(p => p.Name.EndsWith("Id", StringComparison.OrdinalIgnoreCase));
 
-        if (idProp == null)
-            throw new InvalidOperationException("ID property not found in selected item");
+            if (idProp == null)
+                throw new InvalidOperationException("ID property not found in selected item");
 
-        var idValue = idProp.GetValue(selectedItem);
+            var idValue = idProp.GetValue(selectedItem);
 
-        // 4. Находим и удаляем сущность
-        var entityType = dbSet.ElementType;
-        var entity = await _db.FindAsync(entityType, idValue);
+            // 4. Находим и удаляем сущность
+            var entityType = dbSet.ElementType;
+            var entity = await _db.FindAsync(entityType, idValue);
 
-        if (entity == null)
-            throw new InvalidOperationException("Entity not found in database");
+            if (entity == null)
+                throw new InvalidOperationException("Entity not found in database");
 
-        _db.Remove(entity);
-        await _db.SaveChangesAsync();
+            _db.Remove(entity);
+            await _db.SaveChangesAsync();
+        }
+        finally
+        {
+            _asyncLock.Release();
+        }
     }
 
     public async Task UpdateItemAsync(string tableName, object updatedItem)
     {
-        // 1. Находим определение таблицы
-        var tableDef = TableDefinitions.First(t => t.DbName == tableName);
-
-        // 2. Получаем DbSet
-        var dbSetProperty = _db.GetType().GetProperty(tableName);
-        if (dbSetProperty == null)
-            throw new ArgumentException($"Table {tableName} not found");
-
-        var dbSet = (IQueryable)dbSetProperty.GetValue(_db);
-
-        // 3. Находим все ключевые колонки
-        var keyColumns = tableDef.Columns
-            .Where(c => c.IsId || c.IsCompositeKey)
-            .ToList();
-
-        if (!keyColumns.Any())
+        await _asyncLock.WaitAsync();
+        try
         {
-            // Если нет явных ключевых колонок, ищем по свойству, заканчивающемуся на Id
-            keyColumns = tableDef.Columns
-                .Where(c => c.PropertyName.EndsWith("Id"))
+            // 1. Находим определение таблицы
+            var tableDef = TableDefinitions.First(t => t.DbName == tableName);
+
+            // 2. Получаем DbSet
+            var dbSetProperty = _db.GetType().GetProperty(tableName);
+            if (dbSetProperty == null)
+                throw new ArgumentException($"Table {tableName} not found");
+
+            var dbSet = (IQueryable)dbSetProperty.GetValue(_db);
+
+            // 3. Находим все ключевые колонки
+            var keyColumns = tableDef.Columns
+                .Where(c => c.IsId || c.IsCompositeKey)
                 .ToList();
 
             if (!keyColumns.Any())
-                throw new InvalidOperationException("Key properties not found");
-        }
-
-        object entity;
-
-        if (keyColumns.Count > 1 || keyColumns.Any(c => c.IsCompositeKey))
-        {
-            // Для составного ключа
-            var keyValues = new Dictionary<string, object>();
-            foreach (var keyColumn in keyColumns)
             {
-                var prop = updatedItem.GetType().GetProperty(keyColumn.PropertyName);
-                if (prop == null) continue;
+                // Если нет явных ключевых колонок, ищем по свойству, заканчивающемуся на Id
+                keyColumns = tableDef.Columns
+                    .Where(c => c.PropertyName.EndsWith("Id"))
+                    .ToList();
 
-                var value = prop.GetValue(updatedItem);
-                if (value == null) continue;
-
-                keyValues[keyColumn.PropertyName] = value;
+                if (!keyColumns.Any())
+                    throw new InvalidOperationException("Key properties not found");
             }
 
-            entity = await GetCompositeKeyItemAsync(tableName, keyValues);
+            object entity;
+
+            if (keyColumns.Count > 1 || keyColumns.Any(c => c.IsCompositeKey))
+            {
+                // Для составного ключа
+                var keyValues = new Dictionary<string, object>();
+                foreach (var keyColumn in keyColumns)
+                {
+                    var prop = updatedItem.GetType().GetProperty(keyColumn.PropertyName);
+                    if (prop == null) continue;
+
+                    var value = prop.GetValue(updatedItem);
+                    if (value == null) continue;
+
+                    keyValues[keyColumn.PropertyName] = value;
+                }
+
+                entity = await GetCompositeKeyItemAsync(tableName, keyValues);
+            }
+            else
+            {
+                // Для одиночного ключа
+                var idColumn = keyColumns.First();
+                var idProp = updatedItem.GetType().GetProperty(idColumn.PropertyName);
+                if (idProp == null)
+                    throw new InvalidOperationException("ID property not found");
+
+                var idValue = idProp.GetValue(updatedItem);
+                entity = await _db.FindAsync(dbSet.ElementType, idValue);
+            }
+
+            if (entity == null)
+                throw new InvalidOperationException("Entity not found");
+
+            // Копируем значения из updatedItem в entity
+            foreach (var prop in updatedItem.GetType().GetProperties())
+            {
+                // Пропускаем ключевые свойства
+                if (keyColumns.Any(k => k.PropertyName == prop.Name))
+                    continue;
+
+                var entityProp = entity.GetType().GetProperty(prop.Name);
+                if (entityProp == null || !entityProp.CanWrite) continue;
+
+                var value = prop.GetValue(updatedItem);
+                entityProp.SetValue(entity, value);
+            }
+
+            await _db.SaveChangesAsync();
         }
-        else
+        finally
         {
-            // Для одиночного ключа
-            var idColumn = keyColumns.First();
-            var idProp = updatedItem.GetType().GetProperty(idColumn.PropertyName);
-            if (idProp == null)
-                throw new InvalidOperationException("ID property not found");
-
-            var idValue = idProp.GetValue(updatedItem);
-            entity = await _db.FindAsync(dbSet.ElementType, idValue);
+            _asyncLock.Release();
         }
-
-        if (entity == null)
-            throw new InvalidOperationException("Entity not found");
-
-        // Копируем значения из updatedItem в entity
-        foreach (var prop in updatedItem.GetType().GetProperties())
-        {
-            // Пропускаем ключевые свойства
-            if (keyColumns.Any(k => k.PropertyName == prop.Name))
-                continue;
-
-            var entityProp = entity.GetType().GetProperty(prop.Name);
-            if (entityProp == null || !entityProp.CanWrite) continue;
-
-            var value = prop.GetValue(updatedItem);
-            entityProp.SetValue(entity, value);
-        }
-
-        await _db.SaveChangesAsync();
     }
 
     public async Task<object> GetItemByIdAsync(string tableName, object id)
     {
-        var tableDef = TableDefinitions.First(t => t.DbName == tableName);
+        await _asyncLock.WaitAsync();
+        try
+        {
+            var tableDef = TableDefinitions.First(t => t.DbName == tableName);
 
-        var dbSetProperty = _db.GetType().GetProperty(tableName);
-        if (dbSetProperty == null) throw new ArgumentException($"Таблица {tableName} не найдена");
+            var dbSetProperty = _db.GetType().GetProperty(tableName);
+            if (dbSetProperty == null) throw new ArgumentException($"Таблица {tableName} не найдена");
 
-        var dbSet = (IQueryable)dbSetProperty.GetValue(_db);
+            var dbSet = (IQueryable)dbSetProperty.GetValue(_db);
 
-        var idColumn = tableDef.Columns.First(c => c.IsId || c.PropertyName.EndsWith("Id"));
-        var idPropertyName = idColumn.PropertyName;
+            var idColumn = tableDef.Columns.First(c => c.IsId || c.PropertyName.EndsWith("Id"));
+            var idPropertyName = idColumn.PropertyName;
 
-        var parameter = Expression.Parameter(dbSet.ElementType, "x");
+            var parameter = Expression.Parameter(dbSet.ElementType, "x");
 
-        var idProperty = Expression.Property(parameter, idPropertyName);
+            var idProperty = Expression.Property(parameter, idPropertyName);
 
-        var equals = Expression.Equal(idProperty, Expression.Constant(id));
-        var lambda = Expression.Lambda(equals, parameter);
+            var equals = Expression.Equal(idProperty, Expression.Constant(id));
+            var lambda = Expression.Lambda(equals, parameter);
 
-        var whereMethod = typeof(Queryable).GetMethods()
-            .First(m => m.Name == "Where" && m.GetParameters().Length == 2)
-            .MakeGenericMethod(dbSet.ElementType);
+            var whereMethod = typeof(Queryable).GetMethods()
+                .First(m => m.Name == "Where" && m.GetParameters().Length == 2)
+                .MakeGenericMethod(dbSet.ElementType);
 
-        var filteredQuery = (IQueryable)whereMethod.Invoke(
-            null,
-            new object[] { dbSet, lambda });
+            var filteredQuery = (IQueryable)whereMethod.Invoke(
+                null,
+                new object[] { dbSet, lambda });
 
-        var firstOrDefaultAsyncMethod = typeof(EntityFrameworkQueryableExtensions)
-            .GetMethods()
-            .First(m => m.Name == "FirstOrDefaultAsync" && m.GetParameters().Length == 2)
-            .MakeGenericMethod(dbSet.ElementType);
+            var firstOrDefaultAsyncMethod = typeof(EntityFrameworkQueryableExtensions)
+                .GetMethods()
+                .First(m => m.Name == "FirstOrDefaultAsync" && m.GetParameters().Length == 2)
+                .MakeGenericMethod(dbSet.ElementType);
 
-        var task = (Task)firstOrDefaultAsyncMethod.Invoke(
-            null,
-            [filteredQuery, default(CancellationToken)]);
+            var task = (Task)firstOrDefaultAsyncMethod.Invoke(
+                null,
+                [filteredQuery, default(CancellationToken)]);
 
-        await task.ConfigureAwait(false);
+            await task.ConfigureAwait(false);
 
-        var resultProperty = task.GetType().GetProperty("Result");
-        return resultProperty.GetValue(task);
+            var resultProperty = task.GetType().GetProperty("Result");
+            return resultProperty.GetValue(task);
+        }
+        finally
+        {
+            _asyncLock.Release();
+        }
     }
 
     public async Task<object> GetCompositeKeyItemAsync(string tableName, Dictionary<string, object> keyValues)
     {
-        var tableDef = TableDefinitions.First(t => t.DbName == tableName);
-
-        var dbSetProperty = _db.GetType().GetProperty(tableName);
-        if (dbSetProperty == null) throw new ArgumentException($"Таблица {tableName} не найдена");
-
-        var dbSet = (IQueryable)dbSetProperty.GetValue(_db);
-        var parameter = Expression.Parameter(dbSet.ElementType, "x");
-
-        // Строим условие WHERE для всех ключевых полей
-        Expression? whereCondition = null;
-        foreach (var kvp in keyValues)
+        await _asyncLock.WaitAsync();
+        try
         {
-            var property = Expression.Property(parameter, kvp.Key);
-            var equals = Expression.Equal(property, Expression.Constant(kvp.Value));
+            var tableDef = TableDefinitions.First(t => t.DbName == tableName);
 
-            whereCondition = whereCondition == null
-                ? equals
-                : Expression.AndAlso(whereCondition, equals);
+            var dbSetProperty = _db.GetType().GetProperty(tableName);
+            if (dbSetProperty == null) throw new ArgumentException($"Таблица {tableName} не найдена");
+
+            var dbSet = (IQueryable)dbSetProperty.GetValue(_db);
+            var parameter = Expression.Parameter(dbSet.ElementType, "x");
+
+            // Строим условие WHERE для всех ключевых полей
+            Expression? whereCondition = null;
+            foreach (var kvp in keyValues)
+            {
+                var property = Expression.Property(parameter, kvp.Key);
+                var equals = Expression.Equal(property, Expression.Constant(kvp.Value));
+
+                whereCondition = whereCondition == null
+                    ? equals
+                    : Expression.AndAlso(whereCondition, equals);
+            }
+
+            if (whereCondition == null)
+                throw new InvalidOperationException("Не удалось построить условие поиска");
+
+            var lambda = Expression.Lambda(whereCondition, parameter);
+
+            var whereMethod = typeof(Queryable).GetMethods()
+                .First(m => m.Name == "Where" && m.GetParameters().Length == 2)
+                .MakeGenericMethod(dbSet.ElementType);
+
+            var filteredQuery = (IQueryable)whereMethod.Invoke(
+                null,
+                new object[] { dbSet, lambda });
+
+            var firstOrDefaultAsyncMethod = typeof(EntityFrameworkQueryableExtensions)
+                .GetMethods()
+                .First(m => m.Name == "FirstOrDefaultAsync" && m.GetParameters().Length == 2)
+                .MakeGenericMethod(dbSet.ElementType);
+
+            var task = (Task)firstOrDefaultAsyncMethod.Invoke(
+                null,
+                [filteredQuery, default(CancellationToken)]);
+
+            await task.ConfigureAwait(false);
+
+            var resultProperty = task.GetType().GetProperty("Result");
+            return resultProperty.GetValue(task);
         }
-
-        if (whereCondition == null)
-            throw new InvalidOperationException("Не удалось построить условие поиска");
-
-        var lambda = Expression.Lambda(whereCondition, parameter);
-
-        var whereMethod = typeof(Queryable).GetMethods()
-            .First(m => m.Name == "Where" && m.GetParameters().Length == 2)
-            .MakeGenericMethod(dbSet.ElementType);
-
-        var filteredQuery = (IQueryable)whereMethod.Invoke(
-            null,
-            new object[] { dbSet, lambda });
-
-        var firstOrDefaultAsyncMethod = typeof(EntityFrameworkQueryableExtensions)
-            .GetMethods()
-            .First(m => m.Name == "FirstOrDefaultAsync" && m.GetParameters().Length == 2)
-            .MakeGenericMethod(dbSet.ElementType);
-
-        var task = (Task)firstOrDefaultAsyncMethod.Invoke(
-            null,
-            [filteredQuery, default(CancellationToken)]);
-
-        await task.ConfigureAwait(false);
-
-        var resultProperty = task.GetType().GetProperty("Result");
-        return resultProperty.GetValue(task);
+        finally
+        {
+            _asyncLock.Release();
+        }
     }
 }
