@@ -50,7 +50,7 @@ namespace AutoParts_Store.UI.ViewModels
             if (tableDef == null) return;
 
             // Создаем контролы для каждой колонки
-            foreach (var column in tableDef.Columns.Where(c => c.IsVisible && !c.IsId))
+            foreach (var column in tableDef.Columns.Where(c => c.IsVisible))
             {
                 var panel = new StackPanel
                 {

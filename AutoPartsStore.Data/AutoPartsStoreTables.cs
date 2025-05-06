@@ -124,7 +124,7 @@ public class AutoPartsStoreTables
         Columns = new List<TableColumnInfo>
         {
             new("ID", "BatchItemId", isId: true, isVisible: false),
-            new("Номер партии", "BatchId", referenceTable: "Batches", referenceIdColumn: "BatchId", foreignKeyProperty: "BiBatchId"),
+            new("Номер партии", "BatchId", referenceTable: nameof(_db.Batches), referenceIdColumn: nameof(Batch.BatchId), foreignKeyProperty: "BiBatchId"),
             new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "BiProductId"),
             new("Количество", "BatchItemQuantity"),
             new("Остаток", "RemainingItem")
@@ -311,8 +311,18 @@ public class AutoPartsStoreTables
         DbName = "DeliveryTerms",
         Columns = new List<TableColumnInfo>
         {
-            new("Поставщик", "SupplierName", referenceTable: "Suppliers", referenceIdColumn: "SupplierId", foreignKeyProperty: "DtSupplierId", isId: true),
-            new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "DtProductId"),
+            new("Поставщик", "SupplierName",
+                referenceTable: "Suppliers",
+                referenceIdColumn: "SupplierId",
+                foreignKeyProperty: "DtSupplierId",
+                isId: true,
+                isCompositeKey: true),
+            new("Товар", "ProductName",
+                referenceTable: "Products",
+                referenceIdColumn: "ProductId",
+                foreignKeyProperty: "DtProductId",
+                isId: true,
+                isCompositeKey: true),
             new("Цена доставки", "DeliveryPrice"),
             new("Срок доставки (дни)", "DeliveryDays")
         },
@@ -365,20 +375,31 @@ public class AutoPartsStoreTables
         DbName = "StockItems",
         Columns = new List<TableColumnInfo>
         {
-            new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "StockBatchItemId", isId: true),
-            new("Ячейка", "CellName", referenceTable: "StorageCells", referenceIdColumn: "StorageCellId", foreignKeyProperty: "StockStorageCellId"),
+            new("Товар", "ProductName",
+                referenceTable: "Products",
+                referenceIdColumn: "ProductId",
+                foreignKeyProperty: "StockBatchItemId",
+                isId: true,
+                isCompositeKey: true),
+            new("Ячейка", "CellName",
+                referenceTable: "StorageCells",
+                referenceIdColumn: "StorageCellId",
+                foreignKeyProperty: "StockStorageCellId",
+                isId: true,
+                isCompositeKey: true),
             new("Количество", "StockItemQuantity")
         },
         QueryBuilder = db => db.StockItems
             .Include(si => si.StockBatchItem)
             .ThenInclude(bi => bi.BiProduct)
+            .Include(si => si.StockStorageCell)
             .Select(si => new
             {
                 si.StockBatchItem.BiProduct.ProductName,
-                si.StockStorageCellId,
                 si.StockStorageCell.CellName,
                 si.StockItemQuantity,
-                si.StockBatchItemId
+                si.StockBatchItemId,
+                si.StockStorageCellId
             })
     },
 
@@ -568,24 +589,62 @@ public class AutoPartsStoreTables
 
         var dbSet = (IQueryable)dbSetProperty.GetValue(_db);
 
-        // 3. Находим ID (ищем свойство *Id)
-        var idProp = updatedItem.GetType().GetProperties()
-            .FirstOrDefault(p => p.Name.EndsWith("Id"));
+        // 3. Находим все ключевые колонки
+        var keyColumns = tableDef.Columns
+            .Where(c => c.IsId || c.IsCompositeKey)
+            .ToList();
 
-        if (idProp == null)
-            throw new InvalidOperationException("ID property not found");
+        if (!keyColumns.Any())
+        {
+            // Если нет явных ключевых колонок, ищем по свойству, заканчивающемуся на Id
+            keyColumns = tableDef.Columns
+                .Where(c => c.PropertyName.EndsWith("Id"))
+                .ToList();
 
-        var idValue = idProp.GetValue(updatedItem);
+            if (!keyColumns.Any())
+                throw new InvalidOperationException("Key properties not found");
+        }
 
-        // 4. Находим существующую сущность
-        var entity = await _db.FindAsync(dbSet.ElementType, idValue);
+        object entity;
+
+        if (keyColumns.Count > 1 || keyColumns.Any(c => c.IsCompositeKey))
+        {
+            // Для составного ключа
+            var keyValues = new Dictionary<string, object>();
+            foreach (var keyColumn in keyColumns)
+            {
+                var prop = updatedItem.GetType().GetProperty(keyColumn.PropertyName);
+                if (prop == null) continue;
+
+                var value = prop.GetValue(updatedItem);
+                if (value == null) continue;
+
+                keyValues[keyColumn.PropertyName] = value;
+            }
+
+            entity = await GetCompositeKeyItemAsync(tableName, keyValues);
+        }
+        else
+        {
+            // Для одиночного ключа
+            var idColumn = keyColumns.First();
+            var idProp = updatedItem.GetType().GetProperty(idColumn.PropertyName);
+            if (idProp == null)
+                throw new InvalidOperationException("ID property not found");
+
+            var idValue = idProp.GetValue(updatedItem);
+            entity = await _db.FindAsync(dbSet.ElementType, idValue);
+        }
+
         if (entity == null)
             throw new InvalidOperationException("Entity not found");
 
-        // 5. Копируем значения из updatedItem в entity
+        // Копируем значения из updatedItem в entity
         foreach (var prop in updatedItem.GetType().GetProperties())
         {
-            if (prop.Name == "Id") continue; // Пропускаем ID
+            // Пропускаем ключевые свойства
+            if (keyColumns.Any(k => k.PropertyName == prop.Name))
+                continue;
 
             var entityProp = entity.GetType().GetProperty(prop.Name);
             if (entityProp == null || !entityProp.CanWrite) continue;
@@ -594,7 +653,6 @@ public class AutoPartsStoreTables
             entityProp.SetValue(entity, value);
         }
 
-        // 6. Сохраняем
         await _db.SaveChangesAsync();
     }
 
@@ -616,6 +674,56 @@ public class AutoPartsStoreTables
 
         var equals = Expression.Equal(idProperty, Expression.Constant(id));
         var lambda = Expression.Lambda(equals, parameter);
+
+        var whereMethod = typeof(Queryable).GetMethods()
+            .First(m => m.Name == "Where" && m.GetParameters().Length == 2)
+            .MakeGenericMethod(dbSet.ElementType);
+
+        var filteredQuery = (IQueryable)whereMethod.Invoke(
+            null,
+            new object[] { dbSet, lambda });
+
+        var firstOrDefaultAsyncMethod = typeof(EntityFrameworkQueryableExtensions)
+            .GetMethods()
+            .First(m => m.Name == "FirstOrDefaultAsync" && m.GetParameters().Length == 2)
+            .MakeGenericMethod(dbSet.ElementType);
+
+        var task = (Task)firstOrDefaultAsyncMethod.Invoke(
+            null,
+            [filteredQuery, default(CancellationToken)]);
+
+        await task.ConfigureAwait(false);
+
+        var resultProperty = task.GetType().GetProperty("Result");
+        return resultProperty.GetValue(task);
+    }
+
+    public async Task<object> GetCompositeKeyItemAsync(string tableName, Dictionary<string, object> keyValues)
+    {
+        var tableDef = TableDefinitions.First(t => t.DbName == tableName);
+
+        var dbSetProperty = _db.GetType().GetProperty(tableName);
+        if (dbSetProperty == null) throw new ArgumentException($"Таблица {tableName} не найдена");
+
+        var dbSet = (IQueryable)dbSetProperty.GetValue(_db);
+        var parameter = Expression.Parameter(dbSet.ElementType, "x");
+
+        // Строим условие WHERE для всех ключевых полей
+        Expression? whereCondition = null;
+        foreach (var kvp in keyValues)
+        {
+            var property = Expression.Property(parameter, kvp.Key);
+            var equals = Expression.Equal(property, Expression.Constant(kvp.Value));
+
+            whereCondition = whereCondition == null
+                ? equals
+                : Expression.AndAlso(whereCondition, equals);
+        }
+
+        if (whereCondition == null)
+            throw new InvalidOperationException("Не удалось построить условие поиска");
+
+        var lambda = Expression.Lambda(whereCondition, parameter);
 
         var whereMethod = typeof(Queryable).GetMethods()
             .First(m => m.Name == "Where" && m.GetParameters().Length == 2)

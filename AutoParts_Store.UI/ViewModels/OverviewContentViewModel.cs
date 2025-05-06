@@ -113,24 +113,54 @@ namespace AutoParts_Store.UI.ViewModels
 
                 if (tableDef == null) return null;
 
-                var idColumn = tableDef.Columns.FirstOrDefault(c => c.IsId);
-                if (idColumn == null)
+                // Получаем все колонки, которые являются частью ключа (Id или составного ключа)
+                var keyColumns = tableDef.Columns
+                    .Where(c => c.IsId || c.IsCompositeKey)
+                    .ToList();
+
+                if (!keyColumns.Any())
                 {
-                    idColumn = tableDef.Columns.FirstOrDefault(c =>
-                        c.PropertyName.EndsWith("Id", StringComparison.OrdinalIgnoreCase));
+                    // Если нет явных ключевых колонок, ищем по свойству, заканчивающемуся на Id
+                    keyColumns = tableDef.Columns
+                        .Where(c => c.PropertyName.EndsWith("Id", StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+
+                    if (!keyColumns.Any()) return null;
                 }
 
-                if (idColumn == null) return null;
-                var idProperty = selectedItem.GetType().GetProperty(idColumn.PropertyName);
-                if (idProperty == null) return null;
+                // Если ключ составной - собираем все значения
+                if (keyColumns.Count > 1 || keyColumns.Any(c => c.IsCompositeKey))
+                {
+                    var keyValues = new Dictionary<string, object>();
+                    foreach (var keyColumn in keyColumns)
+                    {
+                        var prop = selectedItem.GetType().GetProperty(keyColumn.ForeignKeyProperty);
+                        if (prop == null) return null;
 
-                var idValue = idProperty.GetValue(selectedItem);
-                if (idValue == null) return null;
+                        var value = prop.GetValue(selectedItem);
+                        if (value == null) return null;
 
-                return _tablesService.GetItemByIdAsync(tableDef.DbName, idValue).Result;
+                        keyValues[keyColumn.ForeignKeyProperty] = value;
+                    }
+
+                    return _tablesService.GetCompositeKeyItemAsync(tableDef.DbName, keyValues).Result;
+                }
+                else
+                {
+                    // Обычный одиночный ключ
+                    var idColumn = keyColumns.First();
+                    var idProperty = selectedItem.GetType().GetProperty(idColumn.PropertyName);
+                    if (idProperty == null) return null;
+
+                    var idValue = idProperty.GetValue(selectedItem);
+                    if (idValue == null) return null;
+
+                    return _tablesService.GetItemByIdAsync(tableDef.DbName, idValue).Result;
+                }
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"Error in FindOriginalEntity: {ex.Message}");
                 return null;
             }
         }
