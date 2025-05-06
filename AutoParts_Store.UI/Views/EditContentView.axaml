@@ -4,20 +4,26 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="AutoParts_Store.UI.Views.EditContentView"
+			 xmlns:controls="clr-namespace:Avalonia.Notification.Controls;assembly=Notification.Avalonia"
 			 xmlns:vm="using:AutoParts_Store.UI.ViewModels"
 			 x:DataType="vm:EditContentViewModel">
-	
+
 	<StackPanel>
-		<TextBlock Text="Меню редактирования" HorizontalAlignment="Center"/>
+		<Border>
+			<controls:NotificationMessageContainer Manager="{Binding NotificationManager}" />
+		</Border>
 
-		<ScrollViewer>
-			<ContentControl Content="{Binding ControlsContainer}"/>
-		</ScrollViewer>
+		<StackPanel HorizontalAlignment="Center">
+			
+			<ScrollViewer>
+				<ContentControl Content="{Binding ControlsContainer}"/>
+			</ScrollViewer>
 
-		<StackPanel Orientation="Horizontal" Margin="8">
-			<Button Content="Сохранить" Command="{}" Width="100" Margin="5" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
-			<Button Content="Отмена" Command="{Binding Cancel}" CommandParameter="{x:Type vm:OverviewContentViewModel}" Width="100" Margin="5" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+			<StackPanel Orientation="Horizontal" Margin="8" HorizontalAlignment="Right">
+				<Button Content="Сохранить" Command="{Binding SaveChangesAsync}" Width="100" Margin="5" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+				<Button Content="Отмена" Command="{Binding Cancel}" CommandParameter="{x:Type vm:OverviewContentViewModel}" Width="100" Margin="5" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+			</StackPanel>
+
 		</StackPanel>
-
 	</StackPanel>
 </UserControl>

@@ -9,8 +9,6 @@
 
 	
 	<StackPanel>
-		<TextBlock Text="{Binding Header}" Margin="8" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-
 		<ProgressBar IsIndeterminate="True"
                      Height="4"
                      Margin="8,0"
@@ -24,7 +22,6 @@
 				  CanUserReorderColumns="True"
 				  ItemsSource="{Binding Data}"
                   AutoGenerateColumns="True"
-                  Background="WhiteSmoke"
                   Height="400"
                   IsReadOnly="True"
 				  BorderThickness="1"

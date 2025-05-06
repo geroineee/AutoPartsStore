@@ -8,7 +8,8 @@
         x:DataType="vm:MainWindowViewModel"
         x:Class="AutoParts_Store.UI.Views.MainWindow"
         Icon="/Assets/avalonia-logo.ico"
-        Title="AutoParts_Store.UI">
+        Title="AutoParts_Store.UI"
+		RequestedThemeVariant="{Binding AppTheme}">
 
 	<Window.Resources>
 		<Thickness x:Key="MenuButtonMargin">5</Thickness>
@@ -23,42 +24,45 @@
 				
 				<ToggleButton Name="tglMenu" Content="≡" HorizontalAlignment="Right" FontSize="20" Width="40" Height="40" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
 
-				<TextBlock Text="Меню" TextAlignment="Center"/>
+				<TextBlock Text="Меню" TextAlignment="Center" IsVisible="{Binding #tglMenu.IsChecked}"/>
 
 				<Button Content="Запросы"
 						Command="{Binding ChangeContent}"
 						CommandParameter="{x:Type vm:QueriesContentViewModel}"
 						Margin="{StaticResource MenuButtonMargin}"
 						HorizontalAlignment="Stretch"
-						HorizontalContentAlignment="Center"/>
+						HorizontalContentAlignment="Center"
+						IsVisible="{Binding #tglMenu.IsChecked}"/>
 				
 				<Button Content="Просмотр записей"
 						Command="{Binding ChangeContent}"
 						CommandParameter="{x:Type vm:OverviewContentViewModel}"
 						Margin="{StaticResource MenuButtonMargin}"
 						HorizontalAlignment="Stretch"
-						HorizontalContentAlignment="Center"/>
+						HorizontalContentAlignment="Center"
+						IsVisible="{Binding #tglMenu.IsChecked}"/>
 				
 				<Button Content="Редактирование записей"
 						Margin="{StaticResource MenuButtonMargin}"
 						HorizontalAlignment="Stretch"
-						HorizontalContentAlignment="Center"/>
+						HorizontalContentAlignment="Center"
+						IsVisible="{Binding #tglMenu.IsChecked}"/>
 			</StackPanel>
 		</SplitView.Pane>
 
 		<!--Окно-->
-		<Grid RowDefinitions="50, *, 30" ColumnDefinitions="*">
+		<Grid RowDefinitions="50, *, 50" ColumnDefinitions="*">
 
-			<StackPanel Name="Footer" Background="Aqua" Grid.Row="2" Grid.Column="0">
-				<TextBlock Text="Футер" TextAlignment="Center" />
-			</StackPanel>
-
-			<StackPanel Name="Header" Background="Beige" Grid.Row="0" Grid.Column="0">
-				<TextBlock Text="Заголовок" TextAlignment="Center"/>
+			<StackPanel Grid.Row="0" VerticalAlignment="Center">
+				<TextBlock Text="{Binding HeaderText}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="15"/>
 			</StackPanel>
 
 			<StackPanel Name="Content" Grid.Row="1" Grid.Column="0">
 				<ContentControl Content="{Binding ContentViewModel}"/>
+			</StackPanel>
+
+			<StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+				<ToggleButton Content="Смена темы" Command="{Binding SetTheme}" Margin="8"/>
 			</StackPanel>
 
 		</Grid>

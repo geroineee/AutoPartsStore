@@ -161,14 +161,15 @@ namespace AutoParts_Store.UI.ViewModels
                 );
 
                 _currentNotification = CreateNotification("Успех", "Данные сохранены", NotificationManager, _currentNotification);
+                Cancel(typeof(OverviewContentViewModel));
             }
             catch (Exception ex)
             {
-                _currentNotification = CreateNotification("Ошибка", ex.Message, NotificationManager, _currentNotification);
+                _currentNotification = CreateNotification("Ошибка", ex.Message + ex.GetType(), NotificationManager, _currentNotification);
             }
         }
 
-                public void Cancel(Type typeVM)
+        public void Cancel(Type typeVM)
         {
             MainWindowViewModel.Instance.ChangeContent(typeVM);
             if (MainWindowViewModel.Instance.ContentViewModel is OverviewContentViewModel overviewVM)

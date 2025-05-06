@@ -10,15 +10,8 @@ namespace AutoParts_Store.UI.ViewModels
 {
     public class QueriesContentViewModel : ViewModelBase
     {
-        private string _header = "Запросы к БД";
         private ObservableCollection<object> _data = [];
         private bool _isLoading;
-
-        public string Header
-        {
-            get => _header;
-            set => this.RaiseAndSetIfChanged(ref _header, value);
-        }
 
         public ObservableCollection<object> Data
         {
