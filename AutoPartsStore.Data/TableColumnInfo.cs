@@ -23,6 +23,9 @@
         /// <summary> FK в данной таблице </summary>
         public string ForeignKeyProperty { get; }
 
+        /// <summary>Является ли частью составного ключа</summary>
+        public bool IsCompositeKey { get; set; } = false;
+
         public TableColumnInfo(
             string displayName,
             string propertyName,
@@ -30,7 +33,8 @@
             bool isId = false,
             string referenceTable = null,
             string referenceIdColumn = null,
-            string foreignKeyProperty = null)
+            string foreignKeyProperty = null,
+            bool isCompositeKey = false)
         {
             DisplayName = displayName;
             PropertyName = propertyName;
@@ -38,7 +42,8 @@
             IsId = isId;
             ReferenceTable = referenceTable;
             ReferenceIdColumn = referenceIdColumn;
-            ForeignKeyProperty = foreignKeyProperty ?? propertyName; // По умолчанию PropertyName, если не указано
+            ForeignKeyProperty = foreignKeyProperty ?? propertyName;
+            IsCompositeKey = isCompositeKey;
         }
     }
 }

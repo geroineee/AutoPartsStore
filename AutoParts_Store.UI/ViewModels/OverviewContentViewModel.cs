@@ -40,7 +40,7 @@ namespace AutoParts_Store.UI.ViewModels
         }
 
         public List<string> TableDisplayNames => _tablesService.AvailableTables.Keys.ToList();
-        
+
         public ObservableCollection<object> TableData
         {
             get => _tableData;
@@ -88,7 +88,7 @@ namespace AutoParts_Store.UI.ViewModels
 
             if (originalEntity == null || itemCopy == null)
             {
-                _currentNotification= CreateNotification("Ошибка", "Не удалось начать редактирование", NotificationManager, _currentNotification);
+                _currentNotification = CreateNotification("Ошибка", "Не удалось начать редактирование", NotificationManager, _currentNotification);
                 return;
             }
 
@@ -98,8 +98,9 @@ namespace AutoParts_Store.UI.ViewModels
             {
                 editVM.TableName = CurrentTable;
                 editVM.CurrentItem = itemCopy;
-                editVM.OriginalEntity = originalEntity; 
+                editVM.OriginalEntity = originalEntity;
                 editVM.CreateEditControls();
+                CurrentTable = null;
             }
         }
 
@@ -133,6 +134,7 @@ namespace AutoParts_Store.UI.ViewModels
                 return null;
             }
         }
+
         public async Task ExecuteSearch()
         {
             if (string.IsNullOrEmpty(SearchColumn) && string.IsNullOrEmpty(SearchText))
@@ -172,6 +174,8 @@ namespace AutoParts_Store.UI.ViewModels
                 _dataGridColumnsList.Add(columnInfo.DisplayName);
                 _dataGrid.Columns.Add(column);
             }
+
+            _dataGrid.ItemsSource = TableData;
         }
 
         public async Task DeleteTableDataItem(object selectedItem)

@@ -124,16 +124,18 @@ public class AutoPartsStoreTables
         Columns = new List<TableColumnInfo>
         {
             new("ID", "BatchItemId", isId: true, isVisible: false),
-            new("Номер партии", "BiBatchId", referenceTable: "Batches", referenceIdColumn: "BatchId"),
+            new("Номер партии", "BatchId", referenceTable: "Batches", referenceIdColumn: "BatchId", foreignKeyProperty: "BiBatchId"),
             new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "BiProductId"),
             new("Количество", "BatchItemQuantity"),
             new("Остаток", "RemainingItem")
         },
         QueryBuilder = db => db.BatchItems
+            .Include(bi => bi.BiBatch)
             .Include(bi => bi.BiProduct)
             .Select(bi => new
             {
                 bi.BatchItemId,
+                bi.BiBatch.BatchId,
                 bi.BiBatchId,
                 bi.BiProduct.ProductName,
                 bi.BatchItemQuantity,

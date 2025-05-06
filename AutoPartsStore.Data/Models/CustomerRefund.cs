@@ -18,7 +18,7 @@ public partial class CustomerRefund
 
     public decimal RefundAmount { get; set; }
 
-    public sbyte IsDefect { get; set; }
+    public bool IsDefect { get; set; }
 
     public virtual SaleItem CrSaleItem { get; set; } = null!;
 }

@@ -171,6 +171,10 @@ namespace AutoParts_Store.UI.ViewModels
         public void Cancel(Type typeVM)
         {
             MainWindowViewModel.Instance.ChangeContent(typeVM);
+            if (MainWindowViewModel.Instance.ContentViewModel is OverviewContentViewModel overviewVM)
+            {
+                overviewVM.CurrentTable = TableName;
+            }
         }
 
         private void CopyProperties(object source, object target)
