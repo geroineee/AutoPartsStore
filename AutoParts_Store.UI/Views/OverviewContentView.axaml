@@ -2,34 +2,40 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="450"
 			 xmlns:controls="clr-namespace:Avalonia.Notification.Controls;assembly=Notification.Avalonia"
 			 xmlns:vm="using:AutoParts_Store.UI.ViewModels"
 			 x:DataType="vm:OverviewContentViewModel"
              x:Class="AutoParts_Store.UI.Views.OverviewContentView">
 
 	
-	<StackPanel>
-		<StackPanel Orientation="Horizontal">
-			<!--Выбор таблицы-->
-			<ComboBox ItemsSource="{Binding TableDisplayNames}"
-                  SelectedItem="{Binding CurrentTable}"
-                  PlaceholderText="Выберите таблицу..."
-				  Width="200"
-				  Margin="8"/>
-			<Button Content="Обновить" Command="{Binding LoadTableDataAsync}" Margin="8"/>
+	<Grid RowDefinitions="Auto, *">
+		<Border BorderBrush="Gray"
+        BorderThickness="1"
+        CornerRadius="5"
+        Padding="5"
+        Margin="10"
+		Grid.Row="0">
+			<StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+				<!--Выбор таблицы-->
+				<ComboBox ItemsSource="{Binding TableDisplayNames}"
+					  SelectedItem="{Binding CurrentTable}"
+					  PlaceholderText="Выберите таблицу..."
+					  Width="200"
+					  Margin="8"/>
+				<Button Content="Обновить" Command="{Binding LoadTableDataAsync}" Margin="8"/>
 
-			<!--Поиск по полю-->
-			<ComboBox ItemsSource="{Binding DataGridColumnsList}"
-					  PlaceholderText="Выберите поле для поиска..."
-					  Margin="8"
-					  Width="250"
-					  SelectedItem="{Binding SearchColumn}"/>
-			<TextBox Text="{Binding SearchText}" Width="205" Watermark="Введите текст для поиска" Height="10"/>
-			<Button Content="Поиск" Command="{Binding ExecuteSearch}" Margin="8"/>
-		</StackPanel>
+				<!--Поиск по полю-->
+				<ComboBox ItemsSource="{Binding DataGridColumnsList}"
+						  PlaceholderText="Выберите поле для поиска..."
+						  Margin="8"
+						  Width="250"
+						  SelectedItem="{Binding SearchColumn}"/>
+				<TextBox Text="{Binding SearchText}" Width="205" Watermark="Введите текст для поиска" Height="10"/>
+			</StackPanel>
+		</Border>
 		
-		<StackPanel>
+		<StackPanel Grid.Row="1">
 			<ProgressBar IsIndeterminate="True"
                      Height="4"
                      IsVisible="{Binding IsLoading}"/>
@@ -63,6 +69,6 @@
 			</DataGrid>
 		</StackPanel>
 		
-	</StackPanel>
+	</Grid>
 	
 </UserControl>

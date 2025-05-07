@@ -36,7 +36,11 @@ namespace AutoParts_Store.UI.ViewModels
         public string SearchText
         {
             get => _searchText;
-            set => this.RaiseAndSetIfChanged(ref _searchText, value);
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _searchText, value);
+                _ = ExecuteSearch();
+            }
         }
 
         public List<string> TableDisplayNames => _tablesService.AvailableTables.Keys.ToList();
@@ -44,13 +48,19 @@ namespace AutoParts_Store.UI.ViewModels
         public ObservableCollection<object> TableData
         {
             get => _tableData;
-            set => this.RaiseAndSetIfChanged(ref _tableData, value);
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _tableData, value);
+            }
         }
 
         public ObservableCollection<string> DataGridColumnsList
         {
             get => _dataGridColumnsList;
-            set => this.RaiseAndSetIfChanged(ref _dataGridColumnsList, value);
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _dataGridColumnsList, value);
+            }
         }
 
         public string CurrentTable
@@ -62,6 +72,9 @@ namespace AutoParts_Store.UI.ViewModels
                 {
                     this.RaiseAndSetIfChanged(ref _currentTable, value);
                     UpdateDataGridColumns();
+
+                    SearchColumn = DataGridColumnsList[0];
+
                     _ = LoadTableDataAsync();
                 }
             }
@@ -167,7 +180,7 @@ namespace AutoParts_Store.UI.ViewModels
 
         public async Task ExecuteSearch()
         {
-            if (string.IsNullOrEmpty(SearchColumn) && string.IsNullOrEmpty(SearchText))
+            if (string.IsNullOrEmpty(SearchColumn) || string.IsNullOrEmpty(SearchText))
             {
                 _currentNotification = CreateNotification("Предупреждение", "Необходимо указать поле и текст поиска",
                     NotificationManager,

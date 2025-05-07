@@ -20,51 +20,59 @@
 			   OpenPaneLength="250">
 		<!--Меню-->
 		<SplitView.Pane>
-			<StackPanel>
-				
-				<ToggleButton Name="tglMenu" Content="≡" HorizontalAlignment="Right" FontSize="20" Width="40" Height="40" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+			<Grid RowDefinitions="Auto,*,Auto">
 
-				<TextBlock Text="Меню" TextAlignment="Center" IsVisible="{Binding #tglMenu.IsChecked}"/>
+				<StackPanel Grid.Row="0">
+					<ToggleButton Name="tglMenu" Content="≡" HorizontalAlignment="Right" FontSize="20" Width="40" Height="40" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
 
-				<Button Content="Запросы"
-						Command="{Binding ChangeContent}"
-						CommandParameter="{x:Type vm:QueriesContentViewModel}"
-						Margin="{StaticResource MenuButtonMargin}"
-						HorizontalAlignment="Stretch"
-						HorizontalContentAlignment="Center"
-						IsVisible="{Binding #tglMenu.IsChecked}"/>
+					<TextBlock Text="Меню" TextAlignment="Center" IsVisible="{Binding #tglMenu.IsChecked}"/>
+
+					<Button Content="Запросы"
+							Command="{Binding ChangeContent}"
+							CommandParameter="{x:Type vm:QueriesContentViewModel}"
+							Margin="{StaticResource MenuButtonMargin}"
+							HorizontalAlignment="Stretch"
+							HorizontalContentAlignment="Center"
+							IsVisible="{Binding #tglMenu.IsChecked}"/>
+
+					<Button Content="Просмотр записей"
+							Command="{Binding ChangeContent}"
+							CommandParameter="{x:Type vm:OverviewContentViewModel}"
+							Margin="{StaticResource MenuButtonMargin}"
+							HorizontalAlignment="Stretch"
+							HorizontalContentAlignment="Center"
+							IsVisible="{Binding #tglMenu.IsChecked}"/>
+
+					<Button Content="Редактирование записей"
+							Margin="{StaticResource MenuButtonMargin}"
+							HorizontalAlignment="Stretch"
+							HorizontalContentAlignment="Center"
+							IsVisible="{Binding #tglMenu.IsChecked}"/>
+				</StackPanel>
+
+				<StackPanel Grid.Row="2" VerticalAlignment="Bottom">
+					<ToggleButton Content="Смена темы"
+							  Command="{Binding SetTheme}"
+							  HorizontalAlignment="Stretch"
+							  HorizontalContentAlignment="Center"
+							  VerticalAlignment="Bottom"
+							  Margin="{StaticResource MenuButtonMargin}"
+							  IsVisible="{Binding #tglMenu.IsChecked}"/>
+				</StackPanel>
 				
-				<Button Content="Просмотр записей"
-						Command="{Binding ChangeContent}"
-						CommandParameter="{x:Type vm:OverviewContentViewModel}"
-						Margin="{StaticResource MenuButtonMargin}"
-						HorizontalAlignment="Stretch"
-						HorizontalContentAlignment="Center"
-						IsVisible="{Binding #tglMenu.IsChecked}"/>
-				
-				<Button Content="Редактирование записей"
-						Margin="{StaticResource MenuButtonMargin}"
-						HorizontalAlignment="Stretch"
-						HorizontalContentAlignment="Center"
-						IsVisible="{Binding #tglMenu.IsChecked}"/>
-			</StackPanel>
+			</Grid>
 		</SplitView.Pane>
 
 		<!--Окно-->
-		<Grid RowDefinitions="50, *, 50" ColumnDefinitions="*">
+		<Grid RowDefinitions="50, *" ColumnDefinitions="*">
 
 			<StackPanel Grid.Row="0" VerticalAlignment="Center">
-				<TextBlock Text="{Binding HeaderText}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="15"/>
+				<TextBlock Text="{Binding HeaderText}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="25"/>
 			</StackPanel>
 
 			<StackPanel Name="Content" Grid.Row="1" Grid.Column="0">
 				<ContentControl Content="{Binding ContentViewModel}"/>
 			</StackPanel>
-
-			<StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
-				<ToggleButton Content="Смена темы" Command="{Binding SetTheme}" Margin="8"/>
-			</StackPanel>
-
 		</Grid>
 
 	</SplitView>
