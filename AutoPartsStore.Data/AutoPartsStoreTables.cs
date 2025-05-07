@@ -1,8 +1,7 @@
-﻿using AutoPartsStore.Data.Context;
-using AutoPartsStore.Data;
-using Microsoft.EntityFrameworkCore;
+﻿using AutoPartsStore.Data;
+using AutoPartsStore.Data.Context;
 using AutoPartsStore.Data.Models;
-using System.Linq;
+using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
 public class AutoPartsStoreTables

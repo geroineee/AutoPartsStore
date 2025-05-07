@@ -7,17 +7,22 @@
 			 xmlns:controls="clr-namespace:Avalonia.Notification.Controls;assembly=Notification.Avalonia"
 			 xmlns:vm="using:AutoParts_Store.UI.ViewModels"
 			 x:DataType="vm:EditContentViewModel">
-
+	
 	<StackPanel>
 		<Border>
 			<controls:NotificationMessageContainer Manager="{Binding NotificationManager}" />
 		</Border>
 
 		<StackPanel HorizontalAlignment="Center">
-			
-			<ScrollViewer>
-				<ContentControl Content="{Binding ControlsContainer}"/>
-			</ScrollViewer>
+
+			<Border BorderBrush="Gray"
+					BorderThickness="1"
+					Margin="10"
+					CornerRadius="5">
+				<ScrollViewer>
+					<ContentControl Content="{Binding ControlsContainer}"/>
+				</ScrollViewer>
+			</Border>
 
 			<StackPanel Orientation="Horizontal" Margin="8" HorizontalAlignment="Right">
 				<Button Content="Сохранить" Command="{Binding SaveChangesAsync}" Width="100" Margin="5" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>

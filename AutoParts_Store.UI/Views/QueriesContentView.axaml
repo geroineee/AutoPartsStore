@@ -25,7 +25,7 @@
                   Height="400"
                   IsReadOnly="True"
 				  BorderThickness="1"
-				  BorderBrush="Black">
+				  BorderBrush="Gray">
 		</DataGrid>
 	</StackPanel>
 	

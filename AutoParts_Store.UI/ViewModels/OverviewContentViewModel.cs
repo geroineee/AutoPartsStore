@@ -72,15 +72,17 @@ namespace AutoParts_Store.UI.ViewModels
                 if (_currentTable != value)
                 {
                     this.RaiseAndSetIfChanged(ref _currentTable, value);
-                    _ = LoadTableDataAndColumnsAsync(); // Use the new method
+                    _ = LoadTableDataAndColumnsAsync();
                 }
             }
         }
 
         private async Task LoadTableDataAndColumnsAsync()
         {
-            await LoadTableDataAsync(); // Load the data first
-            UpdateDataGridColumns(); // Then update columns
+            await LoadTableDataAsync();
+            UpdateDataGridColumns();
+
+            SearchColumn = DataGridColumnsList[0];
         }
 
         public bool IsLoading
