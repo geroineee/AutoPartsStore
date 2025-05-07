@@ -127,6 +127,20 @@ namespace AutoParts_Store.UI.ViewModels
             var property = CurrentItem.GetType().GetProperty(column.PropertyName);
             if (property == null) return new TextBox { IsEnabled = false, Text = "Свойство не найдено" };
 
+            if (property.PropertyType == typeof(bool) || property.PropertyType == typeof(bool?))
+            {
+                var checkBox = new CheckBox
+                {
+                    [!ToggleButton.IsCheckedProperty] = new Binding(column.PropertyName)
+                    {
+                        Source = CurrentItem,
+                        Mode = BindingMode.TwoWay
+                    },
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left,
+                };
+                return checkBox;
+            }
+
             return new TextBox
             {
                 Width = 200,

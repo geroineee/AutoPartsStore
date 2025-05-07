@@ -10,6 +10,7 @@ using Avalonia.Notification;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore;
+using Avalonia.Controls.Templates;
 
 namespace AutoParts_Store.UI.ViewModels
 {
@@ -71,13 +72,15 @@ namespace AutoParts_Store.UI.ViewModels
                 if (_currentTable != value)
                 {
                     this.RaiseAndSetIfChanged(ref _currentTable, value);
-                    UpdateDataGridColumns();
-
-                    SearchColumn = DataGridColumnsList[0];
-
-                    _ = LoadTableDataAsync();
+                    _ = LoadTableDataAndColumnsAsync(); // Use the new method
                 }
             }
+        }
+
+        private async Task LoadTableDataAndColumnsAsync()
+        {
+            await LoadTableDataAsync(); // Load the data first
+            UpdateDataGridColumns(); // Then update columns
         }
 
         public bool IsLoading
@@ -208,11 +211,36 @@ namespace AutoParts_Store.UI.ViewModels
 
             foreach (var columnInfo in tableDefinition.Columns.Where(c => c.IsVisible))
             {
-                var column = new DataGridTextColumn
+                DataGridColumn column;
+                var propertyInfo = TableData.FirstOrDefault()?.GetType().GetProperty(columnInfo.PropertyName);
+
+
+                if (propertyInfo != null && (propertyInfo.PropertyType == typeof(bool) || propertyInfo.PropertyType == typeof(bool?)))
                 {
-                    Header = columnInfo.DisplayName,
-                    Binding = new Binding(columnInfo.PropertyName),
-                };
+                    column = new DataGridTemplateColumn
+                    {
+                        Header = columnInfo.DisplayName,
+                        CellTemplate = new FuncDataTemplate<object>((item, _) =>
+                        {
+                            var checkBox = new CheckBox
+                            {
+                                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                                IsEnabled = false // Сделаем его только для чтения
+                            };
+                            checkBox.Bind(CheckBox.IsCheckedProperty, new Binding(columnInfo.PropertyName) { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged });
+                            return checkBox;
+                        })
+                    };
+                }
+                else
+                {
+                    column = new DataGridTextColumn
+                    {
+                        Header = columnInfo.DisplayName,
+                        Binding = new Binding(columnInfo.PropertyName),
+                    };
+                }
 
                 _dataGridColumnsList.Add(columnInfo.DisplayName);
                 _dataGrid.Columns.Add(column);

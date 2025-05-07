@@ -567,8 +567,8 @@ public partial class AutopartsStoreContext : DbContext
             entity.Property(e => e.CategoryName)
                 .HasMaxLength(50)
                 .HasColumnName("category_name");
+            entity.Property(e => e.ProvidesDiscount).HasColumnName("provides_discount");
             entity.Property(e => e.ProvidesGuarantee).HasColumnName("provides_guarantee");
-            entity.Property(e => e.ProvidesGuaranteeBooleanDefaultFalse).HasColumnName("provides_guarantee BOOLEAN DEFAULT FALSE");
         });
 
         modelBuilder.Entity<SupplierContract>(entity =>

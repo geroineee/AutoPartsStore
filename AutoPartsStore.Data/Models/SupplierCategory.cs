@@ -14,7 +14,7 @@ public partial class SupplierCategory
 
     public bool ProvidesGuarantee { get; set; }
 
-    public bool ProvidesGuaranteeBooleanDefaultFalse { get; set; }
+    public bool ProvidesDiscount { get; set; }
 
     public string CategoryDescription { get; set; } = null!;
 

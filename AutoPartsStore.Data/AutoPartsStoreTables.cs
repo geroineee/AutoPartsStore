@@ -17,487 +17,489 @@ public class AutoPartsStoreTables
     }
 
     public static readonly List<TableDefinition> TableDefinitions = new()
-{
-    // Таблица Поставщики (Suppliers)
-    new TableDefinition
     {
-        DisplayName = "Поставщики",
-        DbName = "Suppliers",
-        Columns = new List<TableColumnInfo>
+        // Таблица Поставщики (Suppliers)
+        new TableDefinition
         {
-            new("ID", "SupplierId", isId: true, isVisible: false),
-            new("Название", "SupplierName"),
-            new TableColumnInfo(
-                displayName: "Категория",
-                propertyName: "CategoryName",
-                referenceTable: "SupplierCategories",
-                referenceIdColumn: "CategoryId",
-                foreignKeyProperty: "SupplierCategoryId"
-            ),
-            new("Адрес", "SupplierAddress"),
-            new("Активен", "IsActive")
-        },
-        QueryBuilder = db => db.Suppliers
-            .Include(s => s.SupplierCategory)
-            .Select(s => new
+            DisplayName = "Поставщики",
+            DbName = nameof(_db.Suppliers),
+            Columns = new List<TableColumnInfo>
             {
-                s.SupplierId,
-                s.SupplierName,
-                s.SupplierCategoryId,
-                s.SupplierCategory.CategoryName,
-                s.SupplierAddress,
-                s.IsActive
-            })
-    },
+                new("ID", nameof(Supplier.SupplierId), isId: true, isVisible: false),
+                new("Название", nameof(Supplier.SupplierName)),
+                new TableColumnInfo(
+                    displayName: "Категория",
+                    propertyName: nameof(SupplierCategory.CategoryName),
+                    referenceTable: nameof(_db.SupplierCategories),
+                    referenceIdColumn: nameof(SupplierCategory.CategoryId),
+                    foreignKeyProperty: nameof(Supplier.SupplierCategoryId)
+                ),
+                new("Адрес", nameof(Supplier.SupplierAddress)),
+                new("Активен", nameof(Supplier.IsActive))
+            },
+            QueryBuilder = db => db.Suppliers
+                .Include(s => s.SupplierCategory)
+                .Select(s => new
+                {
+                    s.SupplierId,
+                    s.SupplierName,
+                    s.SupplierCategoryId,
+                    s.SupplierCategory.CategoryName,
+                    s.SupplierAddress,
+                    s.IsActive
+                })
+        },
 
-    // Таблица Категории поставщиков (SupplierCategories)
-    new TableDefinition
-    {
-        DisplayName = "Категории поставщиков",
-        DbName = "SupplierCategories",
-        Columns = new List<TableColumnInfo>
+        // Таблица Категории поставщиков (SupplierCategories)
+        new TableDefinition
         {
-            new("ID", "CategoryId", isId: true, isVisible:false),
-            new("Название", "CategoryName"),
-            new("Дает гарантию", "ProvidesGuarantee"),
-            new("Описание", "CategoryDescription")
-        },
-        QueryBuilder = db => db.SupplierCategories
-            .Select(c => new
+            DisplayName = "Категории поставщиков",
+            DbName = "SupplierCategories",
+            Columns = new List<TableColumnInfo>
             {
-                c.CategoryId,
-                c.CategoryName,
-                c.ProvidesGuarantee,
-                c.CategoryDescription
-            })
-    },
+                new("ID", "CategoryId", isId: true, isVisible:false),
+                new("Название", "CategoryName"),
+                new("Дает гарантию", "ProvidesGuarantee"),
+                new("Дает скидку", "ProvidesDiscount"),
+                new("Описание", "CategoryDescription")
+            },
+            QueryBuilder = db => db.SupplierCategories
+                .Select(c => new
+                {
+                    c.CategoryId,
+                    c.CategoryName,
+                    c.ProvidesGuarantee,
+                    c.ProvidesDiscount,
+                    c.CategoryDescription
+                })
+        },
 
-    // Таблица Товары (Products)
-    new TableDefinition
-    {
-        DisplayName = "Товары",
-        DbName = "Products",
-        Columns = new List<TableColumnInfo>
+        // Таблица Товары (Products)
+        new TableDefinition
         {
-            new("ID", "ProductId", isId: true, isVisible:false),
-            new("Наименование", "ProductName"),
-            new("Цена продажи", "ProductSalePrice"),
-            new("Описание", "ProductDescription")
-        },
-        QueryBuilder = db => db.Products
-            .Select(p => new
+            DisplayName = "Товары",
+            DbName = "Products",
+            Columns = new List<TableColumnInfo>
             {
-                p.ProductId,
-                p.ProductName,
-                p.ProductSalePrice,
-                p.ProductDescription
-            })
-    },
+                new("ID", "ProductId", isId: true, isVisible:false),
+                new("Наименование", "ProductName"),
+                new("Цена продажи", "ProductSalePrice"),
+                new("Описание", "ProductDescription")
+            },
+            QueryBuilder = db => db.Products
+                .Select(p => new
+                {
+                    p.ProductId,
+                    p.ProductName,
+                    p.ProductSalePrice,
+                    p.ProductDescription
+                })
+        },
 
-    // Таблица Партии (Batches)
-    new TableDefinition
-    {
-        DisplayName = "Партии",
-        DbName = "Batches",
-        Columns = new List<TableColumnInfo>
+        // Таблица Партии (Batches)
+        new TableDefinition
         {
-            new("Номер партии", "BatchId", isId: true),
-            new("Поставщик", "SupplierName", referenceTable: "Suppliers", referenceIdColumn: "SupplierId", foreignKeyProperty: "BatchSupplierId"),
-            new("Дата доставки", "DeliveryDate"),
-            new("Описание", "BatchDescription")
-        },
-        QueryBuilder = db => db.Batches
-            .Include(b => b.BatchSupplier)
-            .Select(b => new
+            DisplayName = "Партии",
+            DbName = "Batches",
+            Columns = new List<TableColumnInfo>
             {
-                b.BatchId,
-                b.BatchSupplier.SupplierName,
-                b.DeliveryDate,
-                b.BatchDescription,
-                BatchSupplierId = b.BatchSupplierId
-            })
-    },
+                new("Номер партии", "BatchId", isId: true),
+                new("Поставщик", "SupplierName", referenceTable: "Suppliers", referenceIdColumn: "SupplierId", foreignKeyProperty: "BatchSupplierId"),
+                new("Дата доставки", "DeliveryDate"),
+                new("Описание", "BatchDescription")
+            },
+            QueryBuilder = db => db.Batches
+                .Include(b => b.BatchSupplier)
+                .Select(b => new
+                {
+                    b.BatchId,
+                    b.BatchSupplier.SupplierName,
+                    b.DeliveryDate,
+                    b.BatchDescription,
+                    BatchSupplierId = b.BatchSupplierId
+                })
+        },
 
-    // Таблица Состав партии (BatchItems)
-    new TableDefinition
-    {
-        DisplayName = "Состав партии",
-        DbName = "BatchItems",
-        Columns = new List<TableColumnInfo>
+        // Таблица Состав партии (BatchItems)
+        new TableDefinition
         {
-            new("ID", "BatchItemId", isId: true, isVisible: false),
-            new("Номер партии", "BatchId", referenceTable: nameof(_db.Batches), referenceIdColumn: nameof(Batch.BatchId), foreignKeyProperty: "BiBatchId"),
-            new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "BiProductId"),
-            new("Количество", "BatchItemQuantity"),
-            new("Остаток", "RemainingItem")
-        },
-        QueryBuilder = db => db.BatchItems
-            .Include(bi => bi.BiBatch)
-            .Include(bi => bi.BiProduct)
-            .Select(bi => new
+            DisplayName = "Состав партии",
+            DbName = "BatchItems",
+            Columns = new List<TableColumnInfo>
             {
-                bi.BatchItemId,
-                bi.BiBatch.BatchId,
-                bi.BiBatchId,
-                bi.BiProduct.ProductName,
-                bi.BatchItemQuantity,
-                bi.RemainingItem,
-                bi.BiProductId
-            })
-    },
+                new("ID", "BatchItemId", isId: true, isVisible: false),
+                new("Номер партии", "BatchId", referenceTable: nameof(_db.Batches), referenceIdColumn: nameof(Batch.BatchId), foreignKeyProperty: "BiBatchId"),
+                new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "BiProductId"),
+                new("Количество", "BatchItemQuantity"),
+                new("Остаток", "RemainingItem")
+            },
+            QueryBuilder = db => db.BatchItems
+                .Include(bi => bi.BiBatch)
+                .Include(bi => bi.BiProduct)
+                .Select(bi => new
+                {
+                    bi.BatchItemId,
+                    bi.BiBatch.BatchId,
+                    bi.BiBatchId,
+                    bi.BiProduct.ProductName,
+                    bi.BatchItemQuantity,
+                    bi.RemainingItem,
+                    bi.BiProductId
+                })
+        },
 
-    // Таблица Клиенты (Customers)
-    new TableDefinition
-    {
-        DisplayName = "Клиенты",
-        DbName = "Customers",
-        Columns = new List<TableColumnInfo>
+        // Таблица Клиенты (Customers)
+        new TableDefinition
         {
-            new("ID", "CustomerId", isId: true, isVisible: false),
-            new("Имя", "CustomerName"),
-            new("Фамилия", "CustomerSurname"),
-            new("Отчество", "CustomerPatronymic"),
-            new("Телефон", "CustomerPhone"),
-            new("Email", "CustomerEmail")
-        },
-        QueryBuilder = db => db.Customers
-            .Select(c => new
+            DisplayName = "Клиенты",
+            DbName = "Customers",
+            Columns = new List<TableColumnInfo>
             {
-                c.CustomerId,
-                c.CustomerName,
-                c.CustomerSurname,
-                c.CustomerPatronymic,
-                c.CustomerPhone,
-                c.CustomerEmail
-            })
-    },
+                new("ID", "CustomerId", isId: true, isVisible: false),
+                new("Имя", "CustomerName"),
+                new("Фамилия", "CustomerSurname"),
+                new("Отчество", "CustomerPatronymic"),
+                new("Телефон", "CustomerPhone"),
+                new("Email", "CustomerEmail")
+            },
+            QueryBuilder = db => db.Customers
+                .Select(c => new
+                {
+                    c.CustomerId,
+                    c.CustomerName,
+                    c.CustomerSurname,
+                    c.CustomerPatronymic,
+                    c.CustomerPhone,
+                    c.CustomerEmail
+                })
+        },
 
-    // Таблица Продажи (Sales)
-    new TableDefinition
-    {
-        DisplayName = "Продажи",
-        DbName = "Sales",
-        Columns = new List<TableColumnInfo>
+        // Таблица Продажи (Sales)
+        new TableDefinition
         {
-            new("ID", "SaleId", isId: true, isVisible: false),
-            new("Клиент", "CustomerSurname", referenceTable: "Customers", referenceIdColumn: "CustomerId", foreignKeyProperty: "SaleCustomerId"),
-            new("Сотрудник", "EmployeeSurname", referenceTable: "Employees", referenceIdColumn: "EmployeeId", foreignKeyProperty: "SaleEmployeeId"),
-            new("Дата продажи", "SaleDate"),
-            new("Сумма", "SaleTotalAmount")
-        },
-        QueryBuilder = db => db.Sales
-            .Include(s => s.SaleCustomer)
-            .Include(s => s.SaleEmployee)
-            .Select(s => new
+            DisplayName = "Продажи",
+            DbName = "Sales",
+            Columns = new List<TableColumnInfo>
             {
-                s.SaleId,
-                CustomerSurname = s.SaleCustomer.CustomerSurname + " " + s.SaleCustomer.CustomerName + " " + s.SaleCustomer.CustomerPatronymic,
-                EmployeeSurname = s.SaleEmployee.EmployeeSurname + " " + s.SaleEmployee.EmployeeName + " " + s.SaleEmployee.EmployeePatronymic,
-                s.SaleDate,
-                s.SaleTotalAmount
-            })
-    },
+                new("ID", "SaleId", isId: true, isVisible: false),
+                new("Клиент", "CustomerSurname", referenceTable: "Customers", referenceIdColumn: "CustomerId", foreignKeyProperty: "SaleCustomerId"),
+                new("Сотрудник", "EmployeeSurname", referenceTable: "Employees", referenceIdColumn: "EmployeeId", foreignKeyProperty: "SaleEmployeeId"),
+                new("Дата продажи", "SaleDate"),
+                new("Сумма", "SaleTotalAmount")
+            },
+            QueryBuilder = db => db.Sales
+                .Include(s => s.SaleCustomer)
+                .Include(s => s.SaleEmployee)
+                .Select(s => new
+                {
+                    s.SaleId,
+                    CustomerSurname = s.SaleCustomer.CustomerSurname + " " + s.SaleCustomer.CustomerName + " " + s.SaleCustomer.CustomerPatronymic,
+                    EmployeeSurname = s.SaleEmployee.EmployeeSurname + " " + s.SaleEmployee.EmployeeName + " " + s.SaleEmployee.EmployeePatronymic,
+                    s.SaleDate,
+                    s.SaleTotalAmount
+                })
+        },
 
-    // Таблица Состав продажи (SaleItems)
-    new TableDefinition
-    {
-        DisplayName = "Состав продажи",
-        DbName = "SaleItems",
-        Columns = new List<TableColumnInfo>
+        // Таблица Состав продажи (SaleItems)
+        new TableDefinition
         {
-            new("Номер продажи", "SaleItemId", isId: true),
-            new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "SiBatchItemId"),
-            new("Количество", "SiQuantity")
-        },
-        QueryBuilder = db => db.SaleItems
-            .Include(si => si.SiBatchItem)
-            .ThenInclude(bi => bi.BiProduct)
-            .Select(si => new
+            DisplayName = "Состав продажи",
+            DbName = "SaleItems",
+            Columns = new List<TableColumnInfo>
             {
-                si.SaleItemId,
-                si.SiBatchItem.BiProduct.ProductName,
-                si.SiQuantity,
-                ProductPrice = si.SiBatchItem.BiProduct.ProductSalePrice
-            })
-    },
+                new("Номер продажи", "SaleItemId", isId: true),
+                new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "SiBatchItemId"),
+                new("Количество", "SiQuantity")
+            },
+            QueryBuilder = db => db.SaleItems
+                .Include(si => si.SiBatchItem)
+                .ThenInclude(bi => bi.BiProduct)
+                .Select(si => new
+                {
+                    si.SaleItemId,
+                    si.SiBatchItem.BiProduct.ProductName,
+                    si.SiQuantity,
+                    ProductPrice = si.SiBatchItem.BiProduct.ProductSalePrice
+                })
+        },
 
-    // Таблица Сотрудники (Employees)
-    new TableDefinition
-    {
-        DisplayName = "Сотрудники",
-        DbName = "Employees",
-        Columns = new List<TableColumnInfo>
+        // Таблица Сотрудники (Employees)
+        new TableDefinition
         {
-            new("ID", "EmployeeId", isId: true, isVisible: false),
-            new("Имя", "EmployeeName"),
-            new("Фамилия", "EmployeeSurname"),
-            new("Отчество", "EmployeePatronymic"),
-            new("Должность", "EmployeePosition"),
-            new("Телефон", "EmployeePhone"),
-            new("Email", "EmployeeEmail"),
-            new("Дата найма", "HireDate"),
-            new("Дата увольнения", "FireDate")
-        },
-        QueryBuilder = db => db.Employees
-            .Select(e => new
+            DisplayName = "Сотрудники",
+            DbName = "Employees",
+            Columns = new List<TableColumnInfo>
             {
-                e.EmployeeId,
-                e.EmployeeName,
-                e.EmployeeSurname,
-                e.EmployeePatronymic,
-                e.EmployeePosition,
-                e.EmployeePhone,
-                e.EmployeeEmail,
-                e.HireDate,
-                e.FireDate
-            })
-    },
+                new("ID", "EmployeeId", isId: true, isVisible: false),
+                new("Имя", "EmployeeName"),
+                new("Фамилия", "EmployeeSurname"),
+                new("Отчество", "EmployeePatronymic"),
+                new("Должность", "EmployeePosition"),
+                new("Телефон", "EmployeePhone"),
+                new("Email", "EmployeeEmail"),
+                new("Дата найма", "HireDate"),
+                new("Дата увольнения", "FireDate")
+            },
+            QueryBuilder = db => db.Employees
+                .Select(e => new
+                {
+                    e.EmployeeId,
+                    e.EmployeeName,
+                    e.EmployeeSurname,
+                    e.EmployeePatronymic,
+                    e.EmployeePosition,
+                    e.EmployeePhone,
+                    e.EmployeeEmail,
+                    e.HireDate,
+                    e.FireDate
+                })
+        },
 
-    // Таблица Заказы поставщикам (SupplierOrders)
-    new TableDefinition
-    {
-        DisplayName = "Заказы поставщикам",
-        DbName = "SupplierOrders",
-        Columns = new List<TableColumnInfo>
+        // Таблица Заказы поставщикам (SupplierOrders)
+        new TableDefinition
         {
-            new("ID", "SupplierOrderId", isId: true, isVisible: false),
-            new("Менеджер", "EmployeeSurname",  referenceTable: "Employees", referenceIdColumn: "EmployeeId", foreignKeyProperty: "ManagerId"),
-            new("Поставщик", "SupplierName", referenceTable: "Suppliers", referenceIdColumn: "SupplierId", foreignKeyProperty: "RecipientId"),
-            new("Дата заказа", "SupplierOrderDate"),
-            new("Ожидаемая дата", "ExpectedDeliveryDate"),
-            new("Сумма", "SupplierOrderTotalAmount"),
-            new("Статус", "SupplierOrderStatus")
-        },
-        QueryBuilder = db => db.SupplierOrders
-            .Include(so => so.Manager)
-            .Include(so => so.Recipient)
-            .Select(so => new
+            DisplayName = "Заказы поставщикам",
+            DbName = "SupplierOrders",
+            Columns = new List<TableColumnInfo>
             {
-                so.SupplierOrderId,
-                EmployeeSurname = so.Manager.EmployeeSurname + " " + so.Manager.EmployeeName + " " + so.Manager.EmployeePatronymic,
-                so.Recipient.SupplierName,
-                so.SupplierOrderDate,
-                so.ExpectedDeliveryDate,
-                so.SupplierOrderTotalAmount,
-                so.SupplierOrderStatus,
-                so.RecipientId
-            })
-    },
+                new("ID", "SupplierOrderId", isId: true, isVisible: false),
+                new("Менеджер", "EmployeeSurname",  referenceTable: "Employees", referenceIdColumn: "EmployeeId", foreignKeyProperty: "ManagerId"),
+                new("Поставщик", "SupplierName", referenceTable: "Suppliers", referenceIdColumn: "SupplierId", foreignKeyProperty: "RecipientId"),
+                new("Дата заказа", "SupplierOrderDate"),
+                new("Ожидаемая дата", "ExpectedDeliveryDate"),
+                new("Сумма", "SupplierOrderTotalAmount"),
+                new("Статус", "SupplierOrderStatus")
+            },
+            QueryBuilder = db => db.SupplierOrders
+                .Include(so => so.Manager)
+                .Include(so => so.Recipient)
+                .Select(so => new
+                {
+                    so.SupplierOrderId,
+                    EmployeeSurname = so.Manager.EmployeeSurname + " " + so.Manager.EmployeeName + " " + so.Manager.EmployeePatronymic,
+                    so.Recipient.SupplierName,
+                    so.SupplierOrderDate,
+                    so.ExpectedDeliveryDate,
+                    so.SupplierOrderTotalAmount,
+                    so.SupplierOrderStatus,
+                    so.RecipientId
+                })
+        },
 
-    // Таблица Состав заказов поставщикам (SupplierOrderItems)
-    new TableDefinition
-    {
-        DisplayName = "Состав заказов поставщикам",
-        DbName = "SupplierOrderItems",
-        Columns = new List<TableColumnInfo>
+        // Таблица Состав заказов поставщикам (SupplierOrderItems)
+        new TableDefinition
         {
-            new("Номер заказа", "SoiSupplierOrderId", referenceTable: "SupplierOrders", referenceIdColumn: "SoiSupplierOrderId", isId: true),
-            new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "SoiProductId"),
-            new("Количество", "SoiQuantity")
-        },
-        QueryBuilder = db => db.SupplierOrderItems
-            .Include(soi => soi.SoiProduct)
-            .Select(soi => new
+            DisplayName = "Состав заказов поставщикам",
+            DbName = "SupplierOrderItems",
+            Columns = new List<TableColumnInfo>
             {
-                soi.SoiSupplierOrderId,
-                soi.SoiProduct.ProductName,
-                soi.SoiQuantity,
-                soi.SoiProductId
-            })
-    },
+                new("Номер заказа", "SoiSupplierOrderId", referenceTable: "SupplierOrders", referenceIdColumn: "SoiSupplierOrderId", isId: true),
+                new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "SoiProductId"),
+                new("Количество", "SoiQuantity")
+            },
+            QueryBuilder = db => db.SupplierOrderItems
+                .Include(soi => soi.SoiProduct)
+                .Select(soi => new
+                {
+                    soi.SoiSupplierOrderId,
+                    soi.SoiProduct.ProductName,
+                    soi.SoiQuantity,
+                    soi.SoiProductId
+                })
+        },
 
-    // Таблица Условия поставки (DeliveryTerms)
-    new TableDefinition
-    {
-        DisplayName = "Условия поставки",
-        DbName = "DeliveryTerms",
-        Columns = new List<TableColumnInfo>
+        // Таблица Условия поставки (DeliveryTerms)
+        new TableDefinition
         {
-            new("Поставщик", "SupplierName",
-                referenceTable: "Suppliers",
-                referenceIdColumn: "SupplierId",
-                foreignKeyProperty: "DtSupplierId",
-                isId: true,
-                isCompositeKey: true),
-            new("Товар", "ProductName",
-                referenceTable: "Products",
-                referenceIdColumn: "ProductId",
-                foreignKeyProperty: "DtProductId",
-                isId: true,
-                isCompositeKey: true),
-            new("Цена доставки", "DeliveryPrice"),
-            new("Срок доставки (дни)", "DeliveryDays")
-        },
-        QueryBuilder = db => db.DeliveryTerms
-            .Include(dt => dt.DtSupplier)
-            .Include(dt => dt.DtProduct)
-            .Select(dt => new
+            DisplayName = "Условия поставки",
+            DbName = "DeliveryTerms",
+            Columns = new List<TableColumnInfo>
             {
-                dt.DtSupplier.SupplierName,
-                dt.DtProduct.ProductName,
-                dt.DeliveryPrice,
-                dt.DeliveryDays,
-                dt.DtSupplierId,
-                dt.DtProductId
-            })
-    },
+                new("Поставщик", "SupplierName",
+                    referenceTable: "Suppliers",
+                    referenceIdColumn: "SupplierId",
+                    foreignKeyProperty: "DtSupplierId",
+                    isId: true,
+                    isCompositeKey: true),
+                new("Товар", "ProductName",
+                    referenceTable: "Products",
+                    referenceIdColumn: "ProductId",
+                    foreignKeyProperty: "DtProductId",
+                    isId: true,
+                    isCompositeKey: true),
+                new("Цена доставки", "DeliveryPrice"),
+                new("Срок доставки (дни)", "DeliveryDays")
+            },
+            QueryBuilder = db => db.DeliveryTerms
+                .Include(dt => dt.DtSupplier)
+                .Include(dt => dt.DtProduct)
+                .Select(dt => new
+                {
+                    dt.DtSupplier.SupplierName,
+                    dt.DtProduct.ProductName,
+                    dt.DeliveryPrice,
+                    dt.DeliveryDays,
+                    dt.DtSupplierId,
+                    dt.DtProductId
+                })
+        },
 
-    // Таблица Ячейки склада (StorageCells)
-    new TableDefinition
-    {
-        DisplayName = "Ячейки склада",
-        DbName = "StorageCells",
-        Columns = new List<TableColumnInfo>
+        // Таблица Ячейки склада (StorageCells)
+        new TableDefinition
         {
-            new("ID", "CellId", isId: true, isVisible: false),
-            new("Название", "CellName"),
-            new("Описание", "LocationDescription"),
-            new("Ширина", "Width"),
-            new("Глубина", "Depth"),
-            new("Высота", "Height"),
-            new("Макс. вес", "MaxWeight")
-        },
-        QueryBuilder = db => db.StorageCells
-            .Select(sc => new
+            DisplayName = "Ячейки склада",
+            DbName = "StorageCells",
+            Columns = new List<TableColumnInfo>
             {
-                sc.CellId,
-                sc.CellName,
-                sc.LocationDescription,
-                sc.Width,
-                sc.Depth,
-                sc.Height,
-                sc.MaxWeight
-            })
-    },
+                new("ID", "CellId", isId: true, isVisible: false),
+                new("Название", "CellName"),
+                new("Описание", "LocationDescription"),
+                new("Ширина", "Width"),
+                new("Глубина", "Depth"),
+                new("Высота", "Height"),
+                new("Макс. вес", "MaxWeight")
+            },
+            QueryBuilder = db => db.StorageCells
+                .Select(sc => new
+                {
+                    sc.CellId,
+                    sc.CellName,
+                    sc.LocationDescription,
+                    sc.Width,
+                    sc.Depth,
+                    sc.Height,
+                    sc.MaxWeight
+                })
+        },
 
-    // Таблица Товары на складе (StockItems)
-    new TableDefinition
-    {
-        DisplayName = "Товары на складе",
-        DbName = "StockItems",
-        Columns = new List<TableColumnInfo>
+        // Таблица Товары на складе (StockItems)
+        new TableDefinition
         {
-            new("Товар", "ProductName",
-                referenceTable: "Products",
-                referenceIdColumn: "ProductId",
-                foreignKeyProperty: "StockBatchItemId",
-                isId: true,
-                isCompositeKey: true),
-            new("Ячейка", "CellName",
-                referenceTable: "StorageCells",
-                referenceIdColumn: "StorageCellId",
-                foreignKeyProperty: "StockStorageCellId",
-                isId: true,
-                isCompositeKey: true),
-            new("Количество", "StockItemQuantity")
-        },
-        QueryBuilder = db => db.StockItems
-            .Include(si => si.StockBatchItem)
-            .ThenInclude(bi => bi.BiProduct)
-            .Include(si => si.StockStorageCell)
-            .Select(si => new
+            DisplayName = "Товары на складе",
+            DbName = "StockItems",
+            Columns = new List<TableColumnInfo>
             {
-                si.StockBatchItem.BiProduct.ProductName,
-                si.StockStorageCell.CellName,
-                si.StockItemQuantity,
-                si.StockBatchItemId,
-                si.StockStorageCellId
-            })
-    },
+                new("Товар", "ProductName",
+                    referenceTable: "Products",
+                    referenceIdColumn: "ProductId",
+                    foreignKeyProperty: "StockBatchItemId",
+                    isId: true,
+                    isCompositeKey: true),
+                new("Ячейка", "CellName",
+                    referenceTable: "StorageCells",
+                    referenceIdColumn: "StorageCellId",
+                    foreignKeyProperty: "StockStorageCellId",
+                    isId: true,
+                    isCompositeKey: true),
+                new("Количество", "StockItemQuantity")
+            },
+            QueryBuilder = db => db.StockItems
+                .Include(si => si.StockBatchItem)
+                .ThenInclude(bi => bi.BiProduct)
+                .Include(si => si.StockStorageCell)
+                .Select(si => new
+                {
+                    si.StockBatchItem.BiProduct.ProductName,
+                    si.StockStorageCell.CellName,
+                    si.StockItemQuantity,
+                    si.StockBatchItemId,
+                    si.StockStorageCellId
+                })
+        },
 
-    // Таблица Возвраты клиентов (CustomerRefunds)
-    new TableDefinition
-    {
-        DisplayName = "Возвраты клиентов",
-        DbName = "CustomerRefunds",
-        Columns = new List<TableColumnInfo>
+        // Таблица Возвраты клиентов (CustomerRefunds)
+        new TableDefinition
         {
-            new("ID", "CustomerRefundId", isId: true, isVisible: false),
-            new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "CrSaleItemId"),
-            new("Количество", "CrQuantity"),
-            new("Дата возврата", "RefundDate"),
-            new("Сумма возврата", "RefundAmount"),
-            new("Бракованный", "IsDefect")
-        },
-        QueryBuilder = db => db.CustomerRefunds
-            .Include(cr => cr.CrSaleItem)
-            .ThenInclude(si => si.SiBatchItem)
-            .ThenInclude(bi => bi.BiProduct)
-            .Select(cr => new
+            DisplayName = "Возвраты клиентов",
+            DbName = "CustomerRefunds",
+            Columns = new List<TableColumnInfo>
             {
-                cr.CustomerRefundId,
-                cr.CrSaleItem.SiBatchItem.BiProduct.ProductName,
-                cr.CrQuantity,
-                cr.RefundDate,
-                cr.RefundAmount,
-                cr.IsDefect
-            })
-    },
+                new("ID", "CustomerRefundId", isId: true, isVisible: false),
+                new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "CrSaleItemId"),
+                new("Количество", "CrQuantity"),
+                new("Дата возврата", "RefundDate"),
+                new("Сумма возврата", "RefundAmount"),
+                new("Бракованный", "IsDefect")
+            },
+            QueryBuilder = db => db.CustomerRefunds
+                .Include(cr => cr.CrSaleItem)
+                .ThenInclude(si => si.SiBatchItem)
+                .ThenInclude(bi => bi.BiProduct)
+                .Select(cr => new
+                {
+                    cr.CustomerRefundId,
+                    cr.CrSaleItem.SiBatchItem.BiProduct.ProductName,
+                    cr.CrQuantity,
+                    cr.RefundDate,
+                    cr.RefundAmount,
+                    cr.IsDefect
+                })
+        },
 
-    // Таблица Брак (Defects)
-    new TableDefinition
-    {
-        DisplayName = "Брак",
-        DbName = "Defects",
-        Columns = new List<TableColumnInfo>
+        // Таблица Брак (Defects)
+        new TableDefinition
         {
-            new("ID", "DefectId", isId: true, isVisible: false),
-            new("Номер партии", "BatchItemId", referenceTable: "BatchItems", referenceIdColumn: "BatchItemId", foreignKeyProperty: "DefectBatchItemId"),
-            new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "DefectBatchItemId"),
-            new("Количество", "DefectQuantity"),
-            new("Дата обнаружения", "DetectionDate"),
-            new("Описание", "DefectDescription")
-        },
-        QueryBuilder = db => db.Defects
-            .Include(d => d.DefectBatchItem)
-            .ThenInclude(bi => bi.BiProduct)
-            .Select(d => new
+            DisplayName = "Брак",
+            DbName = "Defects",
+            Columns = new List<TableColumnInfo>
             {
-                d.DefectId,
-                d.DefectBatchItem.BatchItemId,
-                d.DefectBatchItem.BiProduct.ProductName,
-                d.DefectQuantity,
-                d.DetectionDate,
-                d.DefectDescription
-            })
-    },
+                new("ID", "DefectId", isId: true, isVisible: false),
+                new("Номер партии", "BatchItemId", referenceTable: "BatchItems", referenceIdColumn: "BatchItemId", foreignKeyProperty: "DefectBatchItemId"),
+                new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "DefectBatchItemId"),
+                new("Количество", "DefectQuantity"),
+                new("Дата обнаружения", "DetectionDate"),
+                new("Описание", "DefectDescription")
+            },
+            QueryBuilder = db => db.Defects
+                .Include(d => d.DefectBatchItem)
+                .ThenInclude(bi => bi.BiProduct)
+                .Select(d => new
+                {
+                    d.DefectId,
+                    d.DefectBatchItem.BatchItemId,
+                    d.DefectBatchItem.BiProduct.ProductName,
+                    d.DefectQuantity,
+                    d.DetectionDate,
+                    d.DefectDescription
+                })
+        },
 
-    // Таблица Контракты поставщиков (SupplierContracts)
-    new TableDefinition
-    {
-        DisplayName = "Контракты поставщиков",
-        DbName = "SupplierContracts",
-        Columns = new List<TableColumnInfo>
+        // Таблица Контракты поставщиков (SupplierContracts)
+        new TableDefinition
         {
-            new("ID", "ContractId", isId: true, isVisible: false),
-            new TableColumnInfo(
-                displayName: "Поставщик",
-                propertyName: "SupplierName",
-                referenceTable: "Suppliers",
-                referenceIdColumn: "SupplierId",
-                foreignKeyProperty: "ContractSupplierId"
-            ),
-            new("Номер контракта", "ContractNumber"),
-            new("Дата начала", "StartDate"),
-            new("Дата окончания", "EndDate"),
-            new("Условия", "Terms"),
-            new("Скидка", "Discount")
-        },
-        QueryBuilder = db => db.SupplierContracts
-            .Include(sc => sc.ContractSupplier)
-            .Select(sc => new
+            DisplayName = "Контракты поставщиков",
+            DbName = "SupplierContracts",
+            Columns = new List<TableColumnInfo>
             {
-                sc.ContractId,
-                sc.ContractNumber,
-                sc.StartDate,
-                sc.EndDate,
-                sc.Terms,
-                sc.Discount,
-                SupplierName = sc.ContractSupplier.SupplierName,
-                ContractSupplierId = sc.ContractSupplierId
-            })
-    }
-};
+                new("ID", "ContractId", isId: true, isVisible: false),
+                new TableColumnInfo(
+                    displayName: "Поставщик",
+                    propertyName: "SupplierName",
+                    referenceTable: "Suppliers",
+                    referenceIdColumn: "SupplierId",
+                    foreignKeyProperty: "ContractSupplierId"
+                ),
+                new("Номер контракта", "ContractNumber"),
+                new("Дата начала", "StartDate"),
+                new("Дата окончания", "EndDate"),
+                new("Условия", "Terms"),
+                new("Скидка", "Discount")
+            },
+            QueryBuilder = db => db.SupplierContracts
+                .Include(sc => sc.ContractSupplier)
+                .Select(sc => new
+                {
+                    sc.ContractId,
+                    sc.ContractNumber,
+                    sc.StartDate,
+                    sc.EndDate,
+                    sc.Terms,
+                    sc.Discount,
+                    sc.ContractSupplier.SupplierName,
+                    sc.ContractSupplierId
+                })
+        }
+    };
 
     public Dictionary<string, string> AvailableTables =>
         TableDefinitions.ToDictionary(t => t.DisplayName, t => t.DbName);
