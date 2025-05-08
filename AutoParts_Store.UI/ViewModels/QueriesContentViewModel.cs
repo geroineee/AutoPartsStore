@@ -1,9 +1,8 @@
-﻿using ReactiveUI;
+﻿using AutoPartsStore.Data.Context;
+using ReactiveUI;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace AutoParts_Store.UI.ViewModels
@@ -25,7 +24,7 @@ namespace AutoParts_Store.UI.ViewModels
             set => this.RaiseAndSetIfChanged(ref _isLoading, value);
         }
 
-        public QueriesContentViewModel()
+        public QueriesContentViewModel(Func<AutopartsStoreContext> dbContextFactory) : base(dbContextFactory)
         {
             //LoadData().ConfigureAwait(false);
         }

@@ -2,7 +2,7 @@
 using System;
 using System.Globalization;
 
-namespace AutoParts_Store.UI.ViewModels
+namespace AutoParts_Store.UI.Services
 {
     public class DateTimeToDateTimeOffsetConverter : IValueConverter
     {

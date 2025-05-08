@@ -6,13 +6,13 @@ using System.Linq.Expressions;
 
 public class AutoPartsStoreTables
 {
-    private readonly AutopartsStoreContext _db;
+    private readonly Func<AutopartsStoreContext> _dbContextFactory;
 
     private static readonly SemaphoreSlim _asyncLock = new SemaphoreSlim(1, 1);
 
-    public AutoPartsStoreTables(AutopartsStoreContext db)
+    public AutoPartsStoreTables(Func<AutopartsStoreContext> dbContextFactory)
     {
-        _db = db;
+        _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
     }
 
     public static readonly List<TableDefinition> TableDefinitions = new()
@@ -21,7 +21,7 @@ public class AutoPartsStoreTables
         new TableDefinition
         {
             DisplayName = "Поставщики",
-            DbName = nameof(_db.Suppliers),
+            DbName = "Suppliers",
             TableType = typeof(Supplier),
             Columns = new List<TableColumnInfo>
             {
@@ -30,7 +30,7 @@ public class AutoPartsStoreTables
                 new TableColumnInfo(
                     displayName: "Категория",
                     propertyName: nameof(SupplierCategory.CategoryName),
-                    referenceTable: nameof(_db.SupplierCategories),
+                    referenceTable: "SupplierCategories",
                     referenceIdColumn: nameof(SupplierCategory.CategoryId),
                     foreignKeyProperty: nameof(Supplier.SupplierCategoryId)
                 ),
@@ -132,7 +132,7 @@ public class AutoPartsStoreTables
             Columns = new List<TableColumnInfo>
             {
                 new("ID", "BatchItemId", isId: true, isVisible: false),
-                new("Номер партии", "BatchId", referenceTable: nameof(_db.Batches), referenceIdColumn: nameof(Batch.BatchId), foreignKeyProperty: "BiBatchId"),
+                new("Номер партии", "BatchId", referenceTable: "Batches", referenceIdColumn: nameof(Batch.BatchId), foreignKeyProperty: "BiBatchId"),
                 new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "BiProductId"),
                 new("Количество", "BatchItemQuantity"),
                 new("Остаток", "RemainingItem")
@@ -539,7 +539,7 @@ public class AutoPartsStoreTables
         new TableDefinition()
         {
             DisplayName = "Заказы клиентов",
-            DbName = nameof(_db.CustomerOrders),
+            DbName = "CustomerOrders",
             TableType = typeof(SupplierContract),
             Columns = new List<TableColumnInfo>
             {
@@ -571,18 +571,26 @@ public class AutoPartsStoreTables
     public Dictionary<string, string> AvailableTables =>
         TableDefinitions.ToDictionary(t => t.DisplayName, t => t.DbName);
 
-    public List<TableColumnInfo> GetColumns(string tableName) =>
-        TableDefinitions.First(t => t.DbName == tableName).Columns;
+    public List<TableColumnInfo> GetColumns(string tableName)
+    {
+        using (var db = _dbContextFactory())
+        {
+            return TableDefinitions.First(t => t.DbName == tableName).Columns;
+        }
+    }
 
     public async Task<List<object>> GetTableDataAsync(string tableName)
     {
         await _asyncLock.WaitAsync();
         try
         {
-            var definition = TableDefinitions.FirstOrDefault(t => t.DisplayName == tableName)
-                ?? throw new ArgumentException("Unknown table");
+            using (var db = _dbContextFactory())
+            {
+                var definition = TableDefinitions.FirstOrDefault(t => t.DisplayName == tableName)
+                    ?? throw new ArgumentException("Unknown table");
 
-            return await definition.QueryBuilder(_db).ToListAsync();
+                return await definition.QueryBuilder(db).ToListAsync();
+            }
         }
         finally
         {
@@ -595,33 +603,36 @@ public class AutoPartsStoreTables
         await _asyncLock.WaitAsync();
         try
         {
-            var definition = TableDefinitions.FirstOrDefault(t => t.DisplayName == tableName)
-            ?? throw new ArgumentException("Unknown table");
+            using (var db = _dbContextFactory())
+            {
+                var definition = TableDefinitions.FirstOrDefault(t => t.DisplayName == tableName)
+                ?? throw new ArgumentException("Unknown table");
 
-            var columnInfo = definition.Columns.FirstOrDefault(c => c.DisplayName == columnDisplayName);
-            if (columnInfo == null)
-                throw new ArgumentException($"Column '{columnDisplayName}' not found in table '{tableName}'");
+                var columnInfo = definition.Columns.FirstOrDefault(c => c.DisplayName == columnDisplayName);
+                if (columnInfo == null)
+                    throw new ArgumentException($"Column '{columnDisplayName}' not found in table '{tableName}'");
 
-            var query = definition.QueryBuilder(_db).AsQueryable();
-            var parameter = Expression.Parameter(query.ElementType, "x");
+                var query = definition.QueryBuilder(db).AsQueryable();
+                var parameter = Expression.Parameter(query.ElementType, "x");
 
-            var property = Expression.Property(parameter, columnInfo.PropertyName);
+                var property = Expression.Property(parameter, columnInfo.PropertyName);
 
-            var toStringCall = Expression.Call(property, "ToString", null, null);
-            var containsMethod = typeof(string).GetMethod("Contains", new[] { typeof(string) });
-            var containsCall = Expression.Call(toStringCall, containsMethod, Expression.Constant(searchValue));
+                var toStringCall = Expression.Call(property, "ToString", null, null);
+                var containsMethod = typeof(string).GetMethod("Contains", new[] { typeof(string) });
+                var containsCall = Expression.Call(toStringCall, containsMethod, Expression.Constant(searchValue));
 
-            var lambda = Expression.Lambda(containsCall, parameter);
+                var lambda = Expression.Lambda(containsCall, parameter);
 
-            var whereCall = Expression.Call(
-                typeof(Queryable),
-                "Where",
-                [query.ElementType],
-                query.Expression,
-                lambda);
+                var whereCall = Expression.Call(
+                    typeof(Queryable),
+                    "Where",
+                    [query.ElementType],
+                    query.Expression,
+                    lambda);
 
-            var filteredQuery = query.Provider.CreateQuery(whereCall);
-            return await ((IQueryable<object>)filteredQuery).ToListAsync();
+                var filteredQuery = query.Provider.CreateQuery(whereCall);
+                return await ((IQueryable<object>)filteredQuery).ToListAsync();
+            }
         }
         finally
         {
@@ -637,28 +648,33 @@ public class AutoPartsStoreTables
             if (selectedItem == null)
                 throw new ArgumentNullException(nameof(selectedItem));
 
-            // 1. Находим определение таблицы
             var tableDef = TableDefinitions.First(t => t.DisplayName == tableDisplayName);
 
-            if (tableDef == null)
-                throw new ArgumentException("Table definition not found");
+            using (var db = _dbContextFactory())
+            {
+                var dbSetProperty = db.GetType().GetProperty(tableDef.DbName);
+                if (dbSetProperty == null)
+                    throw new ArgumentException($"DbSet '{tableDef.DbName}' not found in DbContext");
 
-            // 2. Получаем DbSet по имени таблицы из контекста
-            var dbSetProperty = _db.GetType().GetProperty(tableDef.DbName);
-            if (dbSetProperty == null)
-                throw new ArgumentException($"DbSet '{tableDef.DbName}' not found in DbContext");
+                var dbSet = (IQueryable)dbSetProperty.GetValue(db);
 
-            var dbSet = (IQueryable)dbSetProperty.GetValue(_db);
-            var entityType = dbSet.ElementType;
+                var idProp = selectedItem.GetType().GetProperties()
+                    .FirstOrDefault(p => p.Name.EndsWith("Id", StringComparison.OrdinalIgnoreCase));
 
-            // 3. Incorporate FindOriginalEntity logic
-            object entity = await FindOriginalEntityAsync(tableDef, selectedItem);
+                if (idProp == null)
+                    throw new InvalidOperationException("ID property not found in selected item");
 
-            if (entity == null)
-                throw new InvalidOperationException("Entity not found in database");
+                var idValue = idProp.GetValue(selectedItem);
 
-            _db.Remove(entity);
-            await _db.SaveChangesAsync();
+                var entityType = dbSet.ElementType;
+                var entity = await db.FindAsync(entityType, idValue);
+
+                if (entity == null)
+                    throw new InvalidOperationException("Entity not found in database");
+
+                db.Remove(entity);
+                await db.SaveChangesAsync();
+            }
         }
         finally
         {
@@ -666,7 +682,7 @@ public class AutoPartsStoreTables
         }
     }
 
-    public async Task<object> FindOriginalEntityAsync(TableDefinition tableDef, object selectedItem)
+    public async Task<object> FindOriginalEntityAsync( AutopartsStoreContext db, TableDefinition tableDef, object selectedItem)
     {
         // Получаем все колонки, которые являются частью ключа (Id или составного ключа)
         var keyColumns = tableDef.Columns
@@ -698,7 +714,7 @@ public class AutoPartsStoreTables
                 keyValues[keyColumn.ForeignKeyProperty] = value;
             }
 
-            return await GetCompositeKeyItemAsync(tableDef.DbName, keyValues);
+            return await GetCompositeKeyItemAsync(db, tableDef.DbName, keyValues);
         }
         else
         {
@@ -709,68 +725,28 @@ public class AutoPartsStoreTables
 
             var idValue = idProperty.GetValue(selectedItem);
             if (idValue == null) return null!;
-
-            return await GetItemByIdAsync(tableDef.DbName, idValue);
+            
+            return await GetItemByIdAsync(db, tableDef.DbName, idValue);
         }
     }
 
-    public async Task UpdateItemAsync(string tableName, object updatedItem)
-    {
-        await _asyncLock.WaitAsync();
-        try
-        {
-            // 1. Находим определение таблицы
-            var tableDef = TableDefinitions.First(t => t.DbName == tableName);
+     
 
-            // 2. Используем FindOriginalEntityAsync для поиска существующей сущности
-            var entity = await FindOriginalEntityAsync(tableDef, updatedItem);
-
-            if (entity == null)
-            {
-                throw new InvalidOperationException("Entity not found");
-            }
-
-            // 3. Копируем значения из updatedItem в entity
-            var keyColumns = tableDef.Columns
-                .Where(c => c.IsId || c.IsCompositeKey)
-                .ToList();
-
-            foreach (var prop in updatedItem.GetType().GetProperties())
-            {
-                // Пропускаем ключевые свойства
-                if (keyColumns.Any(k => k.PropertyName == prop.Name))
-                    continue;
-
-                var entityProp = entity.GetType().GetProperty(prop.Name);
-                if (entityProp == null || !entityProp.CanWrite) continue;
-
-                var value = prop.GetValue(updatedItem);
-                entityProp.SetValue(entity, value);
-            }
-
-            await _db.SaveChangesAsync();
-        }
-        finally
-        {
-            _asyncLock.Release();
-        }
-    }
-
-    public async Task<object> GetItemByIdAsync(string tableName, object id)
+    public async Task<object> GetItemByIdAsync(AutopartsStoreContext db, string tableName, object id)
     {
         try
         {
             var tableDef = TableDefinitions.First(t => t.DbName == tableName);
 
-            var dbSetProperty = _db.GetType().GetProperty(tableName);
+            var dbSetProperty = db.GetType().GetProperty(tableName);
             if (dbSetProperty == null) throw new ArgumentException($"Таблица {tableName} не найдена");
 
-            var dbSet = (IQueryable)dbSetProperty.GetValue(_db)!;
+            var dbSet = (IQueryable)dbSetProperty.GetValue(db);
 
             var idColumn = tableDef.Columns.First(c => c.IsId || c.PropertyName.EndsWith("Id"));
             var idPropertyName = idColumn.PropertyName;
 
-            var parameter = Expression.Parameter(dbSet?.ElementType!, "x");
+            var parameter = Expression.Parameter(dbSet.ElementType, "x");
 
             var idProperty = Expression.Property(parameter, idPropertyName);
 
@@ -779,11 +755,11 @@ public class AutoPartsStoreTables
 
             var whereMethod = typeof(Queryable).GetMethods()
                 .First(m => m.Name == "Where" && m.GetParameters().Length == 2)
-                .MakeGenericMethod(dbSet?.ElementType!);
+                .MakeGenericMethod(dbSet.ElementType);
 
             var filteredQuery = (IQueryable)whereMethod.Invoke(
                 null,
-                [dbSet, lambda])!;
+                new object[] { dbSet, lambda });
 
             var firstOrDefaultAsyncMethod = typeof(EntityFrameworkQueryableExtensions)
                 .GetMethods()
@@ -792,32 +768,83 @@ public class AutoPartsStoreTables
 
             var task = (Task)firstOrDefaultAsyncMethod.Invoke(
                 null,
-                [filteredQuery, default(CancellationToken)])!;
+                new object[] { filteredQuery, default(CancellationToken) });
 
             await task.ConfigureAwait(false);
 
             var resultProperty = task.GetType().GetProperty("Result");
             return resultProperty.GetValue(task);
         }
-        catch (Exception ex)
+        finally
         {
-            Console.WriteLine(ex.Message);
-            return null!;
+
         }
     }
 
-    public async Task<object> GetCompositeKeyItemAsync(string tableName, Dictionary<string, object> keyValues)
+    public async Task UpdateItemAsync(string tableName, object updatedItem)
+{
+    await _asyncLock.WaitAsync();
+    try
+    {
+        var tableDef = TableDefinitions.First(t => t.DbName == tableName);
+
+        using (var db = _dbContextFactory())
+        {
+            // Используем FindOriginalEntityAsync для поиска существующей сущности
+            var entity = await FindOriginalEntityAsync(db, tableDef, updatedItem);
+            
+            if (entity == null)
+                throw new InvalidOperationException("Entity not found");
+
+            // Получаем ключевые колонки для проверки, какие свойства не нужно обновлять
+            var keyColumns = tableDef.Columns
+                .Where(c => c.IsId || c.IsCompositeKey)
+                .ToList();
+
+            if (!keyColumns.Any())
+            {
+                keyColumns = tableDef.Columns
+                    .Where(c => c.PropertyName.EndsWith("Id"))
+                    .ToList();
+            }
+
+            // Обновляем все свойства, кроме ключевых
+            foreach (var prop in updatedItem.GetType().GetProperties())
+            {
+                if (keyColumns.Any(k => k.PropertyName == prop.Name || k.ForeignKeyProperty == prop.Name))
+                    continue;
+
+                var entityProp = entity.GetType().GetProperty(prop.Name);
+                if (entityProp == null || !entityProp.CanWrite) 
+                    continue;
+
+                var value = prop.GetValue(updatedItem);
+                entityProp.SetValue(entity, value);
+            }
+
+            await db.SaveChangesAsync();
+        }
+    }
+    finally
+    {
+        _asyncLock.Release();
+    }
+}
+
+    public async Task<object> GetCompositeKeyItemAsync(AutopartsStoreContext db, string tableName, Dictionary<string, object> keyValues)
     {
         try
         {
             var tableDef = TableDefinitions.First(t => t.DbName == tableName);
 
-            var dbSetProperty = _db.GetType().GetProperty(tableName) ?? throw new ArgumentException($"Таблица {tableName} не найдена");
-            var dbSet = (IQueryable)dbSetProperty.GetValue(_db)!;
+            var dbSetProperty = db.GetType().GetProperty(tableName);
+            if (dbSetProperty == null)
+                throw new ArgumentException($"Таблица {tableName} не найдена");
+
+            var dbSet = (IQueryable)dbSetProperty.GetValue(db);
             var parameter = Expression.Parameter(dbSet.ElementType, "x");
 
-            // Строим условие WHERE для всех ключевых полей
-            Expression? whereCondition = null;
+            Expression whereCondition = null;
             foreach (var kvp in keyValues)
             {
                 var property = Expression.Property(parameter, kvp.Key);
@@ -829,7 +856,7 @@ public class AutoPartsStoreTables
             }
 
             if (whereCondition == null)
-                throw new InvalidOperationException("Cant build search conditions");
+                throw new InvalidOperationException("Не удалось построить условие поиска");
 
             var lambda = Expression.Lambda(whereCondition, parameter);
 
@@ -839,7 +866,7 @@ public class AutoPartsStoreTables
 
             var filteredQuery = (IQueryable)whereMethod.Invoke(
                 null,
-                [dbSet, lambda])!;
+                new object[] { dbSet, lambda });
 
             var firstOrDefaultAsyncMethod = typeof(EntityFrameworkQueryableExtensions)
                 .GetMethods()
@@ -848,17 +875,15 @@ public class AutoPartsStoreTables
 
             var task = (Task)firstOrDefaultAsyncMethod.Invoke(
                 null,
-                [filteredQuery, default(CancellationToken)])!;
+                new object[] { filteredQuery, default(CancellationToken) });
 
             await task.ConfigureAwait(false);
 
             var resultProperty = task.GetType().GetProperty("Result");
             return resultProperty.GetValue(task);
         }
-        catch (Exception ex)
+        finally
         {
-            Console.WriteLine(ex.Message);
-            return null!;
         }
     }
 
@@ -867,24 +892,23 @@ public class AutoPartsStoreTables
         await _asyncLock.WaitAsync();
         try
         {
-            // 1. Получаем DbSet
-            var dbSetProperty = _db.GetType().GetProperty(tableName);
-            if (dbSetProperty == null)
-                throw new ArgumentException($"Table {tableName} not found");
+            using (var db = _dbContextFactory())
+            {
+                var dbSetProperty = db.GetType().GetProperty(tableName);
+                if (dbSetProperty == null)
+                    throw new ArgumentException($"Table {tableName} not found");
 
-            var dbSet = dbSetProperty.GetValue(_db);
+                var dbSet = dbSetProperty.GetValue(db);
 
-            // 2. Добавляем новую сущность
-            var addMethod = dbSet.GetType().GetMethod("Add");
-            addMethod.Invoke(dbSet, new[] { newItem });
+                var addMethod = dbSet.GetType().GetMethod("Add");
+                addMethod.Invoke(dbSet, new[] { newItem });
 
-            // 3. Сохраняем изменения
-            await _db.SaveChangesAsync();
+                await db.SaveChangesAsync();
+            }
         }
         finally
         {
             _asyncLock.Release();
         }
     }
-
 }

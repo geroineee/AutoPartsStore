@@ -1,17 +1,19 @@
 ﻿using AutoPartsStore.Data;
+using AutoPartsStore.Data.Context;
 using Avalonia.Controls;
 using Avalonia.Notification;
-using MsBox.Avalonia.Enums;
 using MsBox.Avalonia;
+using MsBox.Avalonia.Enums;
 using ReactiveUI;
 using System;
 using System.Threading.Tasks;
-using AutoPartsStore.Data.Context;
 
 namespace AutoParts_Store.UI.ViewModels;
 
 public class ViewModelBase : ReactiveObject
 {
+    protected static Func<AutopartsStoreContext> _dbContextFactoryFunc;
+
     protected static AutoPartsStoreQueries _queriesService;
     protected static AutoPartsStoreTables _tablesService;
 
@@ -19,8 +21,12 @@ public class ViewModelBase : ReactiveObject
     {
         if (!Design.IsDesignMode && _queriesService == null)
         {
-            throw new System.Exception("Сначала необходимо инициализировать базу данных");
+            throw new Exception("Сначала необходимо инициализировать базу данных");
         }
+    }
+    public ViewModelBase(Func<AutopartsStoreContext> dbContextFactoryFunc)
+    {
+        _dbContextFactoryFunc = dbContextFactoryFunc;
     }
 
     protected static INotificationMessage? CreateNotification(string badge, string message, INotificationMessageManager notificationManager, INotificationMessage? currentNotification)
@@ -46,7 +52,8 @@ public class ViewModelBase : ReactiveObject
         currentNotification = notificationManager.CreateMessage()
             .Accent(accentColor).Animates(true).Background(backColor).Foreground(foreColor)
             .HasBadge(badge).HasMessage(message)
-            .Dismiss().WithButton("Закрыть", button => {
+            .Dismiss().WithButton("Закрыть", button =>
+            {
                 notificationManager.Dismiss(currentNotification!);
                 currentNotification = null;
             })
@@ -60,6 +67,12 @@ public class ViewModelBase : ReactiveObject
         return result == ButtonResult.Yes;
     }
 
+    public static void UpdateDbContextFactoryFunc(Func<AutopartsStoreContext> newFactory)
+    {
+        _dbContextFactoryFunc = newFactory;
+        _queriesService = new AutoPartsStoreQueries(_dbContextFactoryFunc);
+        _tablesService = new AutoPartsStoreTables(_dbContextFactoryFunc);
+    }
 
     public static void Initialize(AutoPartsStoreQueries queriesRealization, AutoPartsStoreTables tablesService)
     {

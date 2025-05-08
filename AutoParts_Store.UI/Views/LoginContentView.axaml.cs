@@ -2,9 +2,9 @@ using Avalonia.Controls;
 
 namespace AutoParts_Store.UI.Views;
 
-public partial class EditContentView : UserControl
+public partial class LoginContentView : UserControl
 {
-    public EditContentView()
+    public LoginContentView()
     {
         InitializeComponent();
     }

@@ -1,4 +1,6 @@
-﻿using ReactiveUI;
+﻿using AutoParts_Store.UI.Services;
+using AutoPartsStore.Data.Context;
+using ReactiveUI;
 using System;
 
 
@@ -7,9 +9,11 @@ namespace AutoParts_Store.UI.ViewModels
     public class MainWindowViewModel : ViewModelBase
     {
         private ViewModelBase _contentViewModel;
+        private readonly IAuthenticationService _authenticationService;
+        private bool _isAuthenticated = false;
+        private LoginContentViewModel _loginVM;
 
         private string _headerText;
-
         private bool _isAppThemeLight = false;
 
         public string AppTheme
@@ -38,28 +42,29 @@ namespace AutoParts_Store.UI.ViewModels
         private readonly QueriesContentViewModel _queriesVM;
         private readonly OverviewContentViewModel _overviewVM;
         private readonly EditContentViewModel _editVM;
-        
-        public MainWindowViewModel()
+
+        public MainWindowViewModel(IAuthenticationService authenticationService, Func<AutopartsStoreContext> dbContextFactory) : base(dbContextFactory)
         {
             Instance = this;
 
-            _queriesVM = new();
-            _overviewVM = new();
-            _editVM = new();
+            _authenticationService = authenticationService;
+            _loginVM = new LoginContentViewModel(_authenticationService, this);
+            _queriesVM = new QueriesContentViewModel(dbContextFactory);
+            _overviewVM = new OverviewContentViewModel(dbContextFactory);
+            _editVM = new EditContentViewModel(dbContextFactory);
 
-            ChangeContent(typeof(OverviewContentViewModel));
+            ChangeContent(typeof(LoginContentViewModel));
+        }
+
+        public void ShowMainContent()
+        {
+            // Метод для переключения на основной контент приложения после успешного входа в систему
+            ContentViewModel = new OverviewContentViewModel(); // Пример: Переключиться на обзор
+            _isAuthenticated = true;
         }
 
         public void ChangeContent(Type viewModelType)
         {
-            ContentViewModel = viewModelType switch
-            {
-                Type view when view == typeof(QueriesContentViewModel) => _queriesVM,
-                Type view when view == typeof(OverviewContentViewModel) => _overviewVM,
-                Type view when view == typeof(EditContentViewModel) => _editVM,
-                _ => throw new ArgumentException("Неподдерживаемый тип окна."),
-            };
-
             switch (viewModelType)
             {
                 case Type view when view == typeof(QueriesContentViewModel):
@@ -73,6 +78,10 @@ namespace AutoParts_Store.UI.ViewModels
                 case Type view when view == typeof(EditContentViewModel):
                     ContentViewModel = _editVM;
                     HeaderText = "Редактирование записи";
+                    break;
+                case Type view when view == typeof(LoginContentViewModel):
+                    ContentViewModel = _loginVM;
+                    HeaderText = "Вход в систему";
                     break;
             }
         }

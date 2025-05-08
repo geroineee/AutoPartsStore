@@ -1,7 +1,5 @@
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Markup.Xaml;
 using AutoParts_Store.UI.ViewModels;
+using Avalonia.Controls;
 using System;
 
 namespace AutoParts_Store.UI.Views;

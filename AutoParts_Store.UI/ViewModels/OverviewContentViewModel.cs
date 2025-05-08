@@ -1,18 +1,14 @@
-﻿using ReactiveUI;
+﻿using AutoPartsStore.Data.Context;
+using Avalonia.Controls;
+using Avalonia.Controls.Templates;
+using Avalonia.Data;
+using Avalonia.Notification;
+using ReactiveUI;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
-using Avalonia.Controls;
-using Avalonia.Data;
-using System;
-using Avalonia.Notification;
-using System.Text.Json;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
-using Microsoft.EntityFrameworkCore;
-using Avalonia.Controls.Templates;
-using AutoPartsStore.Data.Models;
-using System.Reflection;
 
 namespace AutoParts_Store.UI.ViewModels
 {
@@ -77,6 +73,11 @@ namespace AutoParts_Store.UI.ViewModels
                     _ = LoadTableDataAndColumnsAsync();
                 }
             }
+        }
+
+        public OverviewContentViewModel(Func<AutopartsStoreContext> dbContextFactoryFunc) : base(dbContextFactoryFunc)
+        {
+            TableData = new ObservableCollection<object>();
         }
 
         private async Task LoadTableDataAndColumnsAsync()
@@ -162,8 +163,8 @@ namespace AutoParts_Store.UI.ViewModels
 
                         keyValues[keyColumn.ForeignKeyProperty] = value;
                     }
-
-                    return _tablesService.GetCompositeKeyItemAsync(tableDef.DbName, keyValues).Result;
+                    using (var db = _dbContextFactoryFunc())
+                        return _tablesService.GetCompositeKeyItemAsync(db, tableDef.DbName, keyValues).Result;
                 }
                 else
                 {
@@ -175,7 +176,8 @@ namespace AutoParts_Store.UI.ViewModels
                     var idValue = idProperty.GetValue(selectedItem);
                     if (idValue == null) return null;
 
-                    return _tablesService.GetItemByIdAsync(tableDef.DbName, idValue).Result;
+                    using (var db = _dbContextFactoryFunc())
+                        return _tablesService.GetItemByIdAsync(db, tableDef.DbName, idValue).Result;
                 }
             }
             catch (Exception ex)

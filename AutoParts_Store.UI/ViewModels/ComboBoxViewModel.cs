@@ -1,9 +1,9 @@
 ﻿using AutoParts_Store.UI.ViewModels;
+using ReactiveUI;
+using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
-using System;
-using ReactiveUI;
 
 public class ComboBoxViewModel : ViewModelBase
 {

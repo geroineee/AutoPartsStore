@@ -1,20 +1,22 @@
-﻿using AutoPartsStore.Data;
-using System.Linq;
-using System.Threading.Tasks;
-using System;
-using Avalonia.Notification;
-using Avalonia.Controls;
-using Avalonia.Data;
+﻿using AutoParts_Store.UI.Services;
+using AutoPartsStore.Data;
+using AutoPartsStore.Data.Context;
 using Avalonia;
-using Avalonia.Controls.Templates;
+using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
-using Avalonia.Layout;
-using Avalonia.Media;
-using ReactiveUI;
+using Avalonia.Controls.Templates;
+using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using System.Globalization;
+using Avalonia.Layout;
+using Avalonia.Media;
+using Avalonia.Notification;
 using Microsoft.EntityFrameworkCore;
+using ReactiveUI;
+using System;
+using System.Globalization;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace AutoParts_Store.UI.ViewModels
 {
@@ -33,6 +35,11 @@ namespace AutoParts_Store.UI.ViewModels
             Margin = new Thickness(10),
             Width = 800,
         };
+
+        public EditContentViewModel(Func<AutopartsStoreContext> dbContextFactory) : base(dbContextFactory)
+        {
+
+        }
 
         public void CreateEditControls()
         {
