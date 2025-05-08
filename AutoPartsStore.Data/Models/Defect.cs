@@ -16,7 +16,7 @@ public partial class Defect
 
     public int DefectQuantity { get; set; }
 
-    public string DefectDescription { get; set; } = null!;
+    public string? DefectDescription { get; set; }
 
     public virtual BatchItem DefectBatchItem { get; set; } = null!;
 

@@ -11,6 +11,7 @@ namespace AutoPartsStore.Data
     {
         public string DisplayName { get; init; }
         public string DbName { get; init; }
+        public Type TableType { get; set; }
         public Func<AutopartsStoreContext, IQueryable<object>> QueryBuilder { get; init; }
         public List<TableColumnInfo> Columns { get; init; }
     }

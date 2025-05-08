@@ -14,7 +14,7 @@ public partial class Batch
 
     public DateTime DeliveryDate { get; set; }
 
-    public string BatchDescription { get; set; } = null!;
+    public string? BatchDescription { get; set; }
 
     public virtual ICollection<BatchItem> BatchItems { get; set; } = new List<BatchItem>();
 

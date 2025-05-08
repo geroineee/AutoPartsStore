@@ -19,7 +19,7 @@ public partial class SupplierProductStatView
 
     public decimal DeliveryPrice { get; set; }
 
-    public int DeliveryDays { get; set; }
+    public int? DeliveryDays { get; set; }
 
     public long TotalDeliveries { get; set; }
 

@@ -10,7 +10,7 @@ namespace AutoParts_Store.UI.ViewModels
 
         private string _headerText;
 
-        private bool _isAppThemeLight = true;
+        private bool _isAppThemeLight = false;
 
         public string AppTheme
         {

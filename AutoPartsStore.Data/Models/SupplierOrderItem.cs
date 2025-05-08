@@ -12,7 +12,7 @@ public partial class SupplierOrderItem
 
     public int SoiProductId { get; set; }
 
-    public int? SoiQuantity { get; set; }
+    public int SoiQuantity { get; set; }
 
     public virtual Product SoiProduct { get; set; } = null!;
 

@@ -16,7 +16,7 @@ public partial class SupplierCategory
 
     public bool ProvidesDiscount { get; set; }
 
-    public string CategoryDescription { get; set; } = null!;
+    public string? CategoryDescription { get; set; }
 
     public virtual ICollection<Supplier> Suppliers { get; set; } = new List<Supplier>();
 }

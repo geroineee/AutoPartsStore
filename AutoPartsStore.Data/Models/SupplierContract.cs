@@ -16,9 +16,9 @@ public partial class SupplierContract
 
     public DateOnly StartDate { get; set; }
 
-    public DateOnly EndDate { get; set; }
+    public DateOnly? EndDate { get; set; }
 
-    public string Terms { get; set; } = null!;
+    public string? Terms { get; set; }
 
     public decimal Discount { get; set; }
 

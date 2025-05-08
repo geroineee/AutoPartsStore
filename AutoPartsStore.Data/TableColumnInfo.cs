@@ -23,8 +23,11 @@
         /// <summary> FK в данной таблице </summary>
         public string ForeignKeyProperty { get; }
 
-        /// <summary>Является ли частью составного ключа</summary>
+        /// <summary> Является ли частью составного ключа </summary>
         public bool IsCompositeKey { get; set; } = false;
+
+        /// <summary> Будет ли редактироваться запись </summary>
+        public bool IsEditable { get; set; } = true;
 
         public TableColumnInfo(
             string displayName,
@@ -34,7 +37,8 @@
             string referenceTable = null,
             string referenceIdColumn = null,
             string foreignKeyProperty = null,
-            bool isCompositeKey = false)
+            bool isCompositeKey = false,
+            bool isEditable = true)
         {
             DisplayName = displayName;
             PropertyName = propertyName;
@@ -44,6 +48,7 @@
             ReferenceIdColumn = referenceIdColumn;
             ForeignKeyProperty = foreignKeyProperty ?? propertyName;
             IsCompositeKey = isCompositeKey;
+            IsEditable = isEditable;
         }
     }
 }

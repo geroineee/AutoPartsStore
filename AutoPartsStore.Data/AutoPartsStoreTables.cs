@@ -22,6 +22,7 @@ public class AutoPartsStoreTables
         {
             DisplayName = "Поставщики",
             DbName = nameof(_db.Suppliers),
+            TableType = typeof(Supplier),
             Columns = new List<TableColumnInfo>
             {
                 new("ID", nameof(Supplier.SupplierId), isId: true, isVisible: false),
@@ -54,6 +55,7 @@ public class AutoPartsStoreTables
         {
             DisplayName = "Категории поставщиков",
             DbName = "SupplierCategories",
+            TableType = typeof(SupplierCategory),
             Columns = new List<TableColumnInfo>
             {
                 new("ID", "CategoryId", isId: true, isVisible:false),
@@ -78,6 +80,7 @@ public class AutoPartsStoreTables
         {
             DisplayName = "Товары",
             DbName = "Products",
+            TableType = typeof(Product),
             Columns = new List<TableColumnInfo>
             {
                 new("ID", "ProductId", isId: true, isVisible:false),
@@ -100,6 +103,7 @@ public class AutoPartsStoreTables
         {
             DisplayName = "Партии",
             DbName = "Batches",
+            TableType = typeof(Batch),
             Columns = new List<TableColumnInfo>
             {
                 new("Номер партии", "BatchId", isId: true),
@@ -124,6 +128,7 @@ public class AutoPartsStoreTables
         {
             DisplayName = "Состав партии",
             DbName = "BatchItems",
+            TableType = typeof(BatchItem),
             Columns = new List<TableColumnInfo>
             {
                 new("ID", "BatchItemId", isId: true, isVisible: false),
@@ -152,6 +157,7 @@ public class AutoPartsStoreTables
         {
             DisplayName = "Клиенты",
             DbName = "Customers",
+            TableType = typeof(Customer),
             Columns = new List<TableColumnInfo>
             {
                 new("ID", "CustomerId", isId: true, isVisible: false),
@@ -178,9 +184,10 @@ public class AutoPartsStoreTables
         {
             DisplayName = "Продажи",
             DbName = "Sales",
+            TableType = typeof(Sale),
             Columns = new List<TableColumnInfo>
             {
-                new("ID", "SaleId", isId: true, isVisible: false),
+                new("Номер продажи", "SaleId", isId: true),
                 new("Клиент", "CustomerSurname", referenceTable: "Customers", referenceIdColumn: "CustomerId", foreignKeyProperty: "SaleCustomerId"),
                 new("Сотрудник", "EmployeeSurname", referenceTable: "Employees", referenceIdColumn: "EmployeeId", foreignKeyProperty: "SaleEmployeeId"),
                 new("Дата продажи", "SaleDate"),
@@ -189,13 +196,16 @@ public class AutoPartsStoreTables
             QueryBuilder = db => db.Sales
                 .Include(s => s.SaleCustomer)
                 .Include(s => s.SaleEmployee)
+                .Include(s => s.SaleItems)
+                    .ThenInclude(si => si.SiBatchItem) 
+                    .ThenInclude(bi => bi.BiProduct)
                 .Select(s => new
                 {
                     s.SaleId,
                     CustomerSurname = s.SaleCustomer.CustomerSurname + " " + s.SaleCustomer.CustomerName + " " + s.SaleCustomer.CustomerPatronymic,
                     EmployeeSurname = s.SaleEmployee.EmployeeSurname + " " + s.SaleEmployee.EmployeeName + " " + s.SaleEmployee.EmployeePatronymic,
                     s.SaleDate,
-                    s.SaleTotalAmount
+                    SaleTotalAmount = s.SaleItems.Sum(si => si.SiQuantity * si.SiBatchItem.BiProduct.ProductSalePrice)
                 })
         },
 
@@ -204,22 +214,27 @@ public class AutoPartsStoreTables
         {
             DisplayName = "Состав продажи",
             DbName = "SaleItems",
+            TableType = typeof(SaleItem),
             Columns = new List<TableColumnInfo>
             {
-                new("Номер продажи", "SaleItemId", isId: true),
+                new("ID", "SaleItemId", isId: true, isVisible: false),
+                new("Номер продажи", "SaleId",  referenceTable: "Sales", referenceIdColumn: "SaleId", foreignKeyProperty: "SiSaleId"),
                 new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "SiBatchItemId"),
                 new("Количество", "SiQuantity")
             },
             QueryBuilder = db => db.SaleItems
+                .Include(si => si.SiSale)
                 .Include(si => si.SiBatchItem)
                 .ThenInclude(bi => bi.BiProduct)
                 .Select(si => new
                 {
                     si.SaleItemId,
+                    si.SiSaleId,
+                    si.SiSale.SaleId,
                     si.SiBatchItem.BiProduct.ProductName,
                     si.SiQuantity,
                     ProductPrice = si.SiBatchItem.BiProduct.ProductSalePrice
-                })
+                })            
         },
 
         // Таблица Сотрудники (Employees)
@@ -227,6 +242,7 @@ public class AutoPartsStoreTables
         {
             DisplayName = "Сотрудники",
             DbName = "Employees",
+            TableType = typeof(Employee),
             Columns = new List<TableColumnInfo>
             {
                 new("ID", "EmployeeId", isId: true, isVisible: false),
@@ -261,17 +277,19 @@ public class AutoPartsStoreTables
             DbName = "SupplierOrders",
             Columns = new List<TableColumnInfo>
             {
-                new("ID", "SupplierOrderId", isId: true, isVisible: false),
+                new("Номер заказа", "SupplierOrderId", isId: true),
                 new("Менеджер", "EmployeeSurname",  referenceTable: "Employees", referenceIdColumn: "EmployeeId", foreignKeyProperty: "ManagerId"),
                 new("Поставщик", "SupplierName", referenceTable: "Suppliers", referenceIdColumn: "SupplierId", foreignKeyProperty: "RecipientId"),
                 new("Дата заказа", "SupplierOrderDate"),
                 new("Ожидаемая дата", "ExpectedDeliveryDate"),
+                new("Статус", "SupplierOrderStatus"),
                 new("Сумма", "SupplierOrderTotalAmount"),
-                new("Статус", "SupplierOrderStatus")
             },
             QueryBuilder = db => db.SupplierOrders
                 .Include(so => so.Manager)
                 .Include(so => so.Recipient)
+                .Include(so => so.SupplierOrderItems)
+                    .ThenInclude(soi => soi.SoiProduct)
                 .Select(so => new
                 {
                     so.SupplierOrderId,
@@ -279,7 +297,7 @@ public class AutoPartsStoreTables
                     so.Recipient.SupplierName,
                     so.SupplierOrderDate,
                     so.ExpectedDeliveryDate,
-                    so.SupplierOrderTotalAmount,
+                    SupplierOrderTotalAmount = so.SupplierOrderItems.Sum(soi => soi.SoiQuantity * soi.SoiProduct.ProductSalePrice),
                     so.SupplierOrderStatus,
                     so.RecipientId
                 })
@@ -290,21 +308,56 @@ public class AutoPartsStoreTables
         {
             DisplayName = "Состав заказов поставщикам",
             DbName = "SupplierOrderItems",
+            TableType = typeof(SupplierOrderItem),
             Columns = new List<TableColumnInfo>
             {
-                new("Номер заказа", "SoiSupplierOrderId", referenceTable: "SupplierOrders", referenceIdColumn: "SoiSupplierOrderId", isId: true),
-                new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "SoiProductId"),
+                //new("Поставщик", "SupplierName", referenceTable: "Suppliers", referenceIdColumn: "SupplierId", foreignKeyProperty: "SoiSupplierOrderId", isEditable: false),
+                new("Номер заказа", "SupplierOrderId", referenceTable: "SupplierOrders", referenceIdColumn: "SupplierOrderId", foreignKeyProperty: "SoiSupplierOrderId", isId: true, isCompositeKey: true),
+                new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "SoiProductId", isId: true, isCompositeKey: true),
                 new("Количество", "SoiQuantity")
             },
             QueryBuilder = db => db.SupplierOrderItems
+                .Include(soi => soi.SoiSupplierOrder)
+                    .ThenInclude(so => so.Recipient)
                 .Include(soi => soi.SoiProduct)
                 .Select(soi => new
                 {
-                    soi.SoiSupplierOrderId,
+                    soi.SoiSupplierOrder.SupplierOrderId,
+                    soi.SoiSupplierOrder.Recipient.SupplierName,
                     soi.SoiProduct.ProductName,
                     soi.SoiQuantity,
-                    soi.SoiProductId
+                    soi.SoiSupplierOrderId,
+                    soi.SoiProductId,
                 })
+            //Columns = new List<TableColumnInfo>
+            //{
+            //    new("Поставщик", "SupplierName",
+            //        referenceTable: "Suppliers",
+            //        referenceIdColumn: "SupplierId",
+            //        foreignKeyProperty: "DtSupplierId",
+            //        isId: true,
+            //        isCompositeKey: true),
+            //    new("Товар", "ProductName",
+            //        referenceTable: "Products",
+            //        referenceIdColumn: "ProductId",
+            //        foreignKeyProperty: "DtProductId",
+            //        isId: true,
+            //        isCompositeKey: true),
+            //    new("Цена доставки", "DeliveryPrice"),
+            //    new("Срок доставки (дни)", "DeliveryDays")
+            //},
+            //QueryBuilder = db => db.DeliveryTerms
+            //    .Include(dt => dt.DtSupplier)
+            //    .Include(dt => dt.DtProduct)
+            //    .Select(dt => new
+            //    {
+            //        dt.DtSupplier.SupplierName,
+            //        dt.DtProduct.ProductName,
+            //        dt.DeliveryPrice,
+            //        dt.DeliveryDays,
+            //        dt.DtSupplierId,
+            //        dt.DtProductId
+            //    })
         },
 
         // Таблица Условия поставки (DeliveryTerms)
@@ -312,6 +365,7 @@ public class AutoPartsStoreTables
         {
             DisplayName = "Условия поставки",
             DbName = "DeliveryTerms",
+            TableType = typeof(DeliveryTerm),
             Columns = new List<TableColumnInfo>
             {
                 new("Поставщик", "SupplierName",
@@ -348,6 +402,7 @@ public class AutoPartsStoreTables
         {
             DisplayName = "Ячейки склада",
             DbName = "StorageCells",
+            TableType = typeof(StorageCell),
             Columns = new List<TableColumnInfo>
             {
                 new("ID", "CellId", isId: true, isVisible: false),
@@ -376,6 +431,7 @@ public class AutoPartsStoreTables
         {
             DisplayName = "Товары на складе",
             DbName = "StockItems",
+            TableType = typeof(StockItem),
             Columns = new List<TableColumnInfo>
             {
                 new("Товар", "ProductName",
@@ -411,6 +467,7 @@ public class AutoPartsStoreTables
         {
             DisplayName = "Возвраты клиентов",
             DbName = "CustomerRefunds",
+            TableType = typeof(CustomerRefund),
             Columns = new List<TableColumnInfo>
             {
                 new("ID", "CustomerRefundId", isId: true, isVisible: false),
@@ -440,6 +497,7 @@ public class AutoPartsStoreTables
         {
             DisplayName = "Брак",
             DbName = "Defects",
+            TableType = typeof(Defect),
             Columns = new List<TableColumnInfo>
             {
                 new("ID", "DefectId", isId: true, isVisible: false),
@@ -468,6 +526,7 @@ public class AutoPartsStoreTables
         {
             DisplayName = "Контракты поставщиков",
             DbName = "SupplierContracts",
+            TableType = typeof(SupplierContract),
             Columns = new List<TableColumnInfo>
             {
                 new("ID", "ContractId", isId: true, isVisible: false),
@@ -798,4 +857,30 @@ public class AutoPartsStoreTables
             _asyncLock.Release();
         }
     }
+
+    public async Task AddNewItemAsync(string tableName, object newItem)
+    {
+        await _asyncLock.WaitAsync();
+        try
+        {
+            // 1. Получаем DbSet
+            var dbSetProperty = _db.GetType().GetProperty(tableName);
+            if (dbSetProperty == null)
+                throw new ArgumentException($"Table {tableName} not found");
+
+            var dbSet = dbSetProperty.GetValue(_db);
+
+            // 2. Добавляем новую сущность
+            var addMethod = dbSet.GetType().GetMethod("Add");
+            addMethod.Invoke(dbSet, new[] { newItem });
+
+            // 3. Сохраняем изменения
+            await _db.SaveChangesAsync();
+        }
+        finally
+        {
+            _asyncLock.Release();
+        }
+    }
+
 }

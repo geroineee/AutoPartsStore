@@ -12,7 +12,7 @@ public partial class StorageCell
 
     public string CellName { get; set; } = null!;
 
-    public string LocationDescription { get; set; } = null!;
+    public string? LocationDescription { get; set; }
 
     public decimal Width { get; set; }
 

@@ -11,6 +11,8 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore;
 using Avalonia.Controls.Templates;
+using AutoPartsStore.Data.Models;
+using System.Reflection;
 
 namespace AutoParts_Store.UI.ViewModels
 {
@@ -96,7 +98,7 @@ namespace AutoParts_Store.UI.ViewModels
             TableData = new ObservableCollection<object>();
         }
 
-        public void SwitchOnEditContent(object selectedItem)
+        public async Task SwitchOnEditContent(object selectedItem)
         {
             if (selectedItem == null || string.IsNullOrEmpty(CurrentTable)) return;
 
@@ -118,7 +120,7 @@ namespace AutoParts_Store.UI.ViewModels
                 editVM.CurrentItem = itemCopy;
                 editVM.OriginalEntity = originalEntity;
                 editVM.CreateEditControls();
-                CurrentTable = null;
+                CurrentTable = null!;
             }
         }
 
@@ -228,7 +230,7 @@ namespace AutoParts_Store.UI.ViewModels
                             {
                                 HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
                                 VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-                                IsEnabled = false // Сделаем его только для чтения
+                                IsEnabled = false
                             };
                             checkBox.Bind(CheckBox.IsCheckedProperty, new Binding(columnInfo.PropertyName) { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged });
                             return checkBox;
@@ -290,6 +292,54 @@ namespace AutoParts_Store.UI.ViewModels
                 IsLoading = false;
             }
         }
+
+        public async void CreateNewItem()
+        {
+            if (CurrentTable == null)
+            {
+                _currentNotification = CreateNotification("Напоминание", "Выберите таблицу", NotificationManager, _currentNotification);
+                return;
+            }
+
+
+            var tableDefinition = AutoPartsStoreTables.TableDefinitions.FirstOrDefault(t => t.DisplayName == CurrentTable);
+            if (tableDefinition == null)
+            {
+                _currentNotification = CreateNotification("Ошибка", "Не найдено определение таблицы", NotificationManager, _currentNotification);
+                return;
+            }
+
+            var entityType = tableDefinition.TableType;
+
+            if (entityType == null)
+            {
+                _currentNotification = CreateNotification("Ошибка",
+                    $"Не удалось определить тип таблицы",
+                    NotificationManager,
+                    _currentNotification);
+                return;
+            }
+
+            if (entityType == null)
+            {
+                _currentNotification = CreateNotification("Ошибка",
+                    "Не удалось определить тип сущности",
+                    NotificationManager,
+                    _currentNotification);
+                return;
+            }
+            var newItem = Activator.CreateInstance(entityType);
+
+            MainWindowViewModel.Instance?.ChangeContent(typeof(EditContentViewModel));
+            if (MainWindowViewModel.Instance?.ContentViewModel is EditContentViewModel editVM)
+            {
+                editVM.TableName = CurrentTable;
+                editVM.CurrentItem = newItem!;
+                editVM.OriginalEntity = null;
+                editVM.CreateEditControls();
+            }
+        }
+
 
         public async Task LoadTableDataAsync()
         {

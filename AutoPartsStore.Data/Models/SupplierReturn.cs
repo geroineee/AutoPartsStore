@@ -13,7 +13,7 @@ public partial class SupplierReturn
 
     public int ReturnQuantity { get; set; }
 
-    public decimal CompensationAmount { get; set; }
+    public decimal? CompensationAmount { get; set; }
 
     public bool? ReplacementCompensation { get; set; }
 

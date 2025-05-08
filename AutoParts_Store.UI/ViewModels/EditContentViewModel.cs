@@ -11,13 +11,15 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Media;
 using ReactiveUI;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using System.Globalization;
+using Microsoft.EntityFrameworkCore;
 
 namespace AutoParts_Store.UI.ViewModels
 {
     public class EditContentViewModel : ViewModelBase
     {
-        //public 
-
         public object CurrentItem { get; set; }
         public string TableName { get; set; }
         public object? OriginalEntity { get; set; }
@@ -45,7 +47,7 @@ namespace AutoParts_Store.UI.ViewModels
             if (tableDef == null) return;
 
             // Контролы для каждой колонки
-            foreach (var column in tableDef.Columns.Where(c => c.IsVisible))
+            foreach (var column in tableDef.Columns.Where(c => c.IsVisible && c.IsEditable))
             {
                 // Border для обводки
                 var border = new Border
@@ -55,7 +57,6 @@ namespace AutoParts_Store.UI.ViewModels
                     CornerRadius = new CornerRadius(5),
                     Padding = new Thickness(5),
                     Margin = new Thickness(0, 5),
-                    Background = Brushes.White
                 };
 
                 var panel = new StackPanel
@@ -78,6 +79,7 @@ namespace AutoParts_Store.UI.ViewModels
                 Control inputControl = column.ReferenceTable != null
                     ? CreateReferenceControl(column) // ComboBox
                     : CreateBasicControl(column);    // Остальные атрибуты
+
 
                 panel.Children.Add(inputControl);
 
@@ -106,7 +108,6 @@ namespace AutoParts_Store.UI.ViewModels
                 HorizontalAlignment = HorizontalAlignment.Center,
                 DataContext = vm,
                 [!ItemsControl.ItemsSourceProperty] = new Binding("Items"),
-
                 [!SelectingItemsControl.SelectedItemProperty] = new Binding("SelectedItem")
                 {
                     Mode = BindingMode.TwoWay
@@ -118,9 +119,10 @@ namespace AutoParts_Store.UI.ViewModels
                     {
                         Text = displayText,
                         FontStyle = displayText == "Не выбрано" ? FontStyle.Italic : FontStyle.Normal,
-                        Foreground = displayText == "Не выбрано" ? Brushes.Gray : Brushes.Black,
+                        //Foreground = displayText == "Не выбрано" ? Brushes.Gray : Brushes.Black,
                     };
-                })
+                }),
+                IsEnabled = column.IsEditable // Учитываем IsEditable
             };
 
             comboBox.SelectionChanged += (sender, args) =>
@@ -160,8 +162,49 @@ namespace AutoParts_Store.UI.ViewModels
                         Source = CurrentItem,
                         Mode = BindingMode.TwoWay
                     },
-                    HorizontalAlignment = HorizontalAlignment.Center
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    IsEnabled = column.IsEditable // Учитываем IsEditable
                 };
+            }
+
+            // Числовые поля
+            if (property.PropertyType == typeof(int) ||
+                property.PropertyType == typeof(int?) ||
+                property.PropertyType == typeof(decimal) ||
+                property.PropertyType == typeof(decimal?) ||
+                property.PropertyType == typeof(float) ||
+                property.PropertyType == typeof(float?))
+            {
+                var txtBox = new TextBox
+                {
+                    Width = 300,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    [!TextBox.TextProperty] = new Binding(column.PropertyName)
+                    {
+                        Source = CurrentItem,
+                        Mode = BindingMode.TwoWay,
+                        Converter = new SimpleNumericConverter(property.PropertyType)
+                    },
+                    IsEnabled = column.IsEditable // Учитываем IsEditable
+                };
+
+                txtBox.AddHandler(InputElement.TextInputEvent, (sender, e) =>
+                {
+                    if (!column.IsEditable) return; // Не обрабатываем ввод, если поле не редактируемое
+
+                    var text = (sender as TextBox)?.Text ?? string.Empty;
+                    var newText = text.Insert((sender as TextBox)?.CaretIndex ?? 0, e.Text);
+                    var decimalSeparator = CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator;
+
+                    if (!(char.IsDigit(e.Text[0]) ||
+                         (e.Text == "-" && (text.Length == 0 || (sender as TextBox)?.CaretIndex == 0)) ||
+                         (e.Text == decimalSeparator && !text.Contains(decimalSeparator))))
+                    {
+                        e.Handled = true;
+                    }
+                }, RoutingStrategies.Tunnel);
+
+                return txtBox;
             }
 
             // Обработка всех типов дат
@@ -185,7 +228,8 @@ namespace AutoParts_Store.UI.ViewModels
                         Source = CurrentItem,
                         Mode = BindingMode.TwoWay,
                         Converter = new DateTimeToDateTimeOffsetConverter()
-                    }
+                    },
+                    IsEnabled = column.IsEditable // Учитываем IsEditable
                 };
 
                 var clearButton = new Button
@@ -194,6 +238,7 @@ namespace AutoParts_Store.UI.ViewModels
                     Width = 85,
                     Height = 35,
                     VerticalAlignment = VerticalAlignment.Center,
+                    IsEnabled = column.IsEditable, // Учитываем IsEditable
                     Command = ReactiveCommand.Create(() =>
                     {
                         try
@@ -206,8 +251,7 @@ namespace AutoParts_Store.UI.ViewModels
                             }
                             else
                             {
-
-                                CreateNotification("Информация",
+                                _currentNotification = CreateNotification("Информация",
                                     $"Поле '{column.DisplayName}' не поддерживает пустое значение",
                                     NotificationManager,
                                     _currentNotification);
@@ -215,7 +259,7 @@ namespace AutoParts_Store.UI.ViewModels
                         }
                         catch (Exception ex)
                         {
-                            CreateNotification("Ошибка",
+                            _currentNotification = CreateNotification("Ошибка",
                                 $"Не удалось сбросить значение: {ex.Message}",
                                 NotificationManager,
                                 _currentNotification);
@@ -240,33 +284,47 @@ namespace AutoParts_Store.UI.ViewModels
                 {
                     Source = CurrentItem,
                     Mode = BindingMode.TwoWay
-                }
+                },
+                IsEnabled = column.IsEditable // Учитываем IsEditable
             };
         }
 
         public async Task SaveChangesAsync()
         {
-            if (OriginalEntity == null || CurrentItem == null) return;
+            if (CurrentItem == null) return;
 
             try
             {
-                // Копируем изменения из CurrentItem в OriginalEntity
-                CopyProperties(CurrentItem, OriginalEntity);
+                if (OriginalEntity == null)
+                {
+                    var tableDef = AutoPartsStoreTables.TableDefinitions.First(t => t.DisplayName == TableName);
 
-                // Сохраняем оригинал в БД
-                await _tablesService.UpdateItemAsync(
-                    AutoPartsStoreTables.TableDefinitions.First(t => t.DisplayName == TableName).DbName,
-                    OriginalEntity
-                );
+                    await _tablesService.AddNewItemAsync(tableDef.DbName, CurrentItem);
 
-                _currentNotification = CreateNotification("Успех", "Данные сохранены", NotificationManager, _currentNotification);
+                    _currentNotification = CreateNotification("Успех", "Новая запись создана", NotificationManager, _currentNotification);
+                }
+                else
+                {
+                    CopyProperties(CurrentItem, OriginalEntity);
+                    await _tablesService.UpdateItemAsync(
+                        AutoPartsStoreTables.TableDefinitions.First(t => t.DisplayName == TableName).DbName,
+                        OriginalEntity
+                    );
+
+                    _currentNotification = CreateNotification("Успех", "Данные сохранены", NotificationManager, _currentNotification);
+                }
                 Cancel(typeof(OverviewContentViewModel));
+            }
+            catch (DbUpdateException ex)
+            {
+                _currentNotification = CreateNotification("Ошибка", ex.InnerException?.Message ?? ex.Message, NotificationManager, _currentNotification);
             }
             catch (Exception ex)
             {
-                _currentNotification = CreateNotification("Ошибка", ex.Message + ex.GetType(), NotificationManager, _currentNotification);
+                _currentNotification = CreateNotification("Ошибка", ex.Message, NotificationManager, _currentNotification);
             }
         }
+
 
         public void Cancel(Type typeVM)
         {

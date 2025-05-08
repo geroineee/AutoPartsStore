@@ -14,7 +14,7 @@ public partial class DeliveryTerm
 
     public decimal DeliveryPrice { get; set; }
 
-    public int DeliveryDays { get; set; }
+    public int? DeliveryDays { get; set; }
 
     public virtual Product DtProduct { get; set; } = null!;
 

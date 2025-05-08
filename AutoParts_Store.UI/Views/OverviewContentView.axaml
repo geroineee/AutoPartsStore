@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="450"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
 			 xmlns:controls="clr-namespace:Avalonia.Notification.Controls;assembly=Notification.Avalonia"
 			 xmlns:vm="using:AutoParts_Store.UI.ViewModels"
 			 x:DataType="vm:OverviewContentViewModel"
@@ -22,16 +22,23 @@
 					  SelectedItem="{Binding CurrentTable}"
 					  PlaceholderText="Выберите таблицу..."
 					  Width="200"
-					  Margin="8"/>
-				<Button Content="Обновить" Command="{Binding LoadTableDataAsync}" Margin="8"/>
+					  Margin="8"
+					  VerticalAlignment="Top"/>
+				<Button Content="Обновить" Command="{Binding LoadTableDataAsync}" Margin="8" VerticalAlignment="Top"/>
 
 				<!--Поиск по полю-->
-				<ComboBox ItemsSource="{Binding DataGridColumnsList}"
+				<StackPanel>
+					<TextBox HorizontalAlignment="Left" Margin="8" Text="{Binding SearchText}" Width="250" Watermark="Введите текст для поиска" Height="10"/>
+					<ComboBox ItemsSource="{Binding DataGridColumnsList}"
 						  PlaceholderText="Выберите поле для поиска..."
 						  Margin="8"
 						  Width="250"
-						  SelectedItem="{Binding SearchColumn}"/>
-				<TextBox Text="{Binding SearchText}" Width="205" Watermark="Введите текст для поиска" Height="10"/>
+						  SelectedItem="{Binding SearchColumn}"
+					      HorizontalAlignment="Left"/>
+				</StackPanel>
+
+				<Button Content="Добавить запись" Command="{Binding CreateNewItem}" Margin="8" VerticalAlignment="Top"/>
+				
 			</StackPanel>
 		</Border>
 		
@@ -51,7 +58,7 @@
 					  SelectionMode="Single"
 					  Margin="10"
 					  ColumnWidth="*"
-					  MinHeight="500"
+					  Height="500"
 					  VerticalAlignment="Stretch"
 					  GridLinesVisibility="All"
 					  BorderThickness="1"
