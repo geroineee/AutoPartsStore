@@ -23,6 +23,7 @@ namespace AutoParts_Store.UI.ViewModels
     public class EditContentViewModel : ViewModelBase
     {
         public object CurrentItem { get; set; }
+        public object? AnonymousItem { get; set; }
         public string TableName { get; set; }
         public object? OriginalEntity { get; set; }
 
@@ -53,9 +54,14 @@ namespace AutoParts_Store.UI.ViewModels
 
             if (tableDef == null) return;
 
+            bool isNewItem = (OriginalEntity == null); // Определяем, создается ли новая запись
+
             // Контролы для каждой колонки
-            foreach (var column in tableDef.Columns.Where(c => c.IsVisible && c.IsEditable))
+            foreach (var column in tableDef.Columns.Where(c => c.IsVisible && c.IsVisibleInEdit))
             {
+                // Определяем, является ли колонка редактируемой
+                bool isColumnEditable = isNewItem ? column.IsCreationEditable : column.IsEditable;
+
                 // Border для обводки
                 var border = new Border
                 {
@@ -69,7 +75,7 @@ namespace AutoParts_Store.UI.ViewModels
                 var panel = new StackPanel
                 {
                     Orientation = Orientation.Horizontal,
-                    Spacing = 200,
+                    Spacing = 250,
                     HorizontalAlignment = HorizontalAlignment.Left
                 };
 
@@ -78,14 +84,14 @@ namespace AutoParts_Store.UI.ViewModels
                 {
                     Text = column.DisplayName,
                     VerticalAlignment = VerticalAlignment.Center,
-                    MinWidth = 150,
+                    MinWidth = 200,
                     FontWeight = FontWeight.Bold
                 });
 
                 // Элемент управления справа
                 Control inputControl = column.ReferenceTable != null
-                    ? CreateReferenceControl(column) // ComboBox
-                    : CreateBasicControl(column);    // Остальные атрибуты
+                    ? CreateReferenceControl(column, isColumnEditable) // ComboBox
+                    : CreateBasicControl(column, isColumnEditable);    // Остальные атрибуты
 
                 panel.Children.Add(inputControl);
 
@@ -97,7 +103,8 @@ namespace AutoParts_Store.UI.ViewModels
             }
         }
 
-        private Control CreateReferenceControl(TableColumnInfo column)
+
+        private Control CreateReferenceControl(TableColumnInfo column, bool isColumnEditable)
         {
             var vm = new ComboBoxViewModel(
                 _tablesService,
@@ -125,10 +132,9 @@ namespace AutoParts_Store.UI.ViewModels
                     {
                         Text = displayText,
                         FontStyle = displayText == "Не выбрано" ? FontStyle.Italic : FontStyle.Normal,
-                        //Foreground = displayText == "Не выбрано" ? Brushes.Gray : Brushes.Black,
                     };
                 }),
-                IsEnabled = column.IsEditable // Учитываем IsEditable
+                IsEnabled = isColumnEditable // Учитываем возможность редактирования
             };
 
             comboBox.SelectionChanged += (sender, args) =>
@@ -145,7 +151,7 @@ namespace AutoParts_Store.UI.ViewModels
             return comboBox;
         }
 
-        private Control CreateBasicControl(TableColumnInfo column)
+        private Control CreateBasicControl(TableColumnInfo column, bool isColumnEditable)
         {
             var property = CurrentItem.GetType().GetProperty(column.PropertyName);
             if (property == null)
@@ -169,7 +175,7 @@ namespace AutoParts_Store.UI.ViewModels
                         Mode = BindingMode.TwoWay
                     },
                     HorizontalAlignment = HorizontalAlignment.Center,
-                    IsEnabled = column.IsEditable // Учитываем IsEditable
+                    IsEnabled = isColumnEditable // Учитываем возможность редактирования
                 };
             }
 
@@ -191,12 +197,12 @@ namespace AutoParts_Store.UI.ViewModels
                         Mode = BindingMode.TwoWay,
                         Converter = new SimpleNumericConverter(property.PropertyType)
                     },
-                    IsEnabled = column.IsEditable // Учитываем IsEditable
+                    IsEnabled = isColumnEditable // Учитываем возможность редактирования
                 };
 
                 txtBox.AddHandler(InputElement.TextInputEvent, (sender, e) =>
                 {
-                    if (!column.IsEditable) return; // Не обрабатываем ввод, если поле не редактируемое
+                    if (!isColumnEditable) return; // Не обрабатываем ввод, если поле не редактируемое
 
                     var text = (sender as TextBox)?.Text ?? string.Empty;
                     var newText = text.Insert((sender as TextBox)?.CaretIndex ?? 0, e.Text);
@@ -235,16 +241,16 @@ namespace AutoParts_Store.UI.ViewModels
                         Mode = BindingMode.TwoWay,
                         Converter = new DateTimeToDateTimeOffsetConverter()
                     },
-                    IsEnabled = column.IsEditable // Учитываем IsEditable
+                    IsEnabled = isColumnEditable // Учитываем возможность редактирования
                 };
 
                 var clearButton = new Button
                 {
-                    Content = "Очистить",
-                    Width = 85,
-                    Height = 35,
+                    Content = "x",
+                    Width = 25,
+                    Height = 30,
                     VerticalAlignment = VerticalAlignment.Center,
-                    IsEnabled = column.IsEditable, // Учитываем IsEditable
+                    IsEnabled = isColumnEditable, // Учитываем возможность редактирования
                     Command = ReactiveCommand.Create(() =>
                     {
                         try
@@ -291,7 +297,7 @@ namespace AutoParts_Store.UI.ViewModels
                     Source = CurrentItem,
                     Mode = BindingMode.TwoWay
                 },
-                IsEnabled = column.IsEditable // Учитываем IsEditable
+                IsEnabled = isColumnEditable // Учитываем возможность редактирования
             };
         }
 

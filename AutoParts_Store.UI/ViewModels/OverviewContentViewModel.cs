@@ -118,6 +118,7 @@ namespace AutoParts_Store.UI.ViewModels
             if (MainWindowViewModel.Instance?.ContentViewModel is EditContentViewModel editVM)
             {
                 editVM.TableName = CurrentTable;
+                editVM.AnonymousItem = selectedItem;
                 editVM.CurrentItem = itemCopy;
                 editVM.OriginalEntity = originalEntity;
                 editVM.CreateEditControls();

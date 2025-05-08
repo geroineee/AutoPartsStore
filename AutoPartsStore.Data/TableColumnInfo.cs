@@ -29,6 +29,12 @@
         /// <summary> Будет ли редактироваться запись </summary>
         public bool IsEditable { get; set; } = true;
 
+        /// <summary> Будет ли редактироваться при создании </summary>
+        public bool IsCreationEditable { get; set; } = true;
+
+        /// <summary> Отображать ли в форме создания/редактирования </summary>
+        public bool IsVisibleInEdit { get; set; } = true;
+
         public TableColumnInfo(
             string displayName,
             string propertyName,
@@ -38,7 +44,9 @@
             string referenceIdColumn = null,
             string foreignKeyProperty = null,
             bool isCompositeKey = false,
-            bool isEditable = true)
+            bool isEditable = true,
+            bool isCreationEditable = true,
+            bool isVisibleInEdit = true)
         {
             DisplayName = displayName;
             PropertyName = propertyName;
@@ -49,6 +57,8 @@
             ForeignKeyProperty = foreignKeyProperty ?? propertyName;
             IsCompositeKey = isCompositeKey;
             IsEditable = isEditable;
+            IsCreationEditable = isCreationEditable;
+            IsVisibleInEdit = isVisibleInEdit;
         }
     }
 }
