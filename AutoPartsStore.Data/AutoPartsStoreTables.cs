@@ -275,6 +275,7 @@ public class AutoPartsStoreTables
         {
             DisplayName = "Заказы поставщикам",
             DbName = "SupplierOrders",
+            TableType = typeof(SupplierOrder),
             Columns = new List<TableColumnInfo>
             {
                 new("Номер заказа", "SupplierOrderId", isId: true),
@@ -438,26 +439,6 @@ public class AutoPartsStoreTables
                     si.StockBatchItemId,
                     si.StockStorageCellId
                 })
-            //Columns = new List<TableColumnInfo>
-            //{
-            //    //new("Поставщик", "SupplierName", referenceTable: "Suppliers", referenceIdColumn: "SupplierId", foreignKeyProperty: "SoiSupplierOrderId", isEditable: false),
-            //    new("Номер заказа", "SupplierOrderId", referenceTable: "SupplierOrders", referenceIdColumn: "SupplierOrderId", foreignKeyProperty: "SoiSupplierOrderId", isId: true, isCompositeKey: true),
-            //    new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "SoiProductId", isId: true, isCompositeKey: true),
-            //    new("Количество", "SoiQuantity")
-            //},
-            //QueryBuilder = db => db.SupplierOrderItems
-            //    .Include(soi => soi.SoiSupplierOrder)
-            //        .ThenInclude(so => so.Recipient)
-            //    .Include(soi => soi.SoiProduct)
-            //    .Select(soi => new
-            //    {
-            //        soi.SoiSupplierOrder.SupplierOrderId,
-            //        soi.SoiSupplierOrder.Recipient.SupplierName,
-            //        soi.SoiProduct.ProductName,
-            //        soi.SoiQuantity,
-            //        soi.SoiSupplierOrderId,
-            //        soi.SoiProductId,
-            //    })
         },
 
         // Таблица Возвраты клиентов (CustomerRefunds)
@@ -553,6 +534,36 @@ public class AutoPartsStoreTables
                     sc.Discount,
                     sc.ContractSupplier.SupplierName,
                     sc.ContractSupplierId
+                })
+        },
+        new TableDefinition()
+        {
+            DisplayName = "Заказы клиентов",
+            DbName = nameof(_db.CustomerOrders),
+            TableType = typeof(SupplierContract),
+            Columns = new List<TableColumnInfo>
+            {
+                new("Номер заказа", "CustomerOrderId", isId: true, isVisible: false),
+                new TableColumnInfo(
+                    displayName: "Клиент",
+                    propertyName: "CustomerSurname",
+                    referenceTable: "Customers",
+                    referenceIdColumn: "CustomerId",
+                    foreignKeyProperty: "CoCustomerId"
+                ),
+                new("Дата заказа", "CustomerOrderDate"),
+                new("Описание", "CustomerOrderDescription"),
+                new("Статус", "CustomerOrderStatus")
+            },
+            QueryBuilder = db => db.CustomerOrders
+                .Include(co => co.CoCustomer)
+                .Select(co => new
+                {
+                    co.CustomerOrderId,
+                    CustomerSurname = co.CoCustomer.CustomerName + " " + co.CoCustomer.CustomerSurname + " " + co.CoCustomer.CustomerPatronymic,
+                    co.CustomerOrderDate,
+                    co.CustomerOrderDescription,
+                    co.CustomerOrderStatus
                 })
         }
     };

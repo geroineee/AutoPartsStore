@@ -279,13 +279,9 @@ namespace AutoParts_Store.UI.ViewModels
 
                 await LoadTableDataAsync();
             }
-            catch (DbUpdateException ex)
-            {
-                _currentNotification = CreateNotification("Ошибка", $"Ошибка удаления записи: запись используется в других таблицах", NotificationManager, _currentNotification);
-            }
             catch (Exception ex)
             {
-                _currentNotification = CreateNotification("Ошибка", $"{ex.Message}, {ex.GetType()}", NotificationManager, _currentNotification);
+                _currentNotification = CreateNotification("Ошибка", $"Ошибка удаления записи: запись используется в других таблицах", NotificationManager, _currentNotification);
             }
             finally
             {
