@@ -19,13 +19,13 @@ namespace AutoParts_Store.UI.ViewModels
     public class OverviewContentViewModel : ViewModelBase
     {
         private DataGrid _dataGrid;
-        private string _currentTable;
+        private string? _currentTable;
         private bool _isLoading;
         private ObservableCollection<object> _tableData;
 
         private ObservableCollection<string> _dataGridColumnsList = [];
-        private string _searchColumn;
-        private string _searchText;
+        private string? _searchColumn;
+        private string? _searchText;
 
         private INotificationMessage? _currentNotification;
         public INotificationMessageManager NotificationManager { get; } = new NotificationMessageManager();
@@ -98,7 +98,7 @@ namespace AutoParts_Store.UI.ViewModels
             TableData = new ObservableCollection<object>();
         }
 
-        public async Task SwitchOnEditContent(object selectedItem)
+        public void SwitchOnEditContent(object selectedItem)
         {
             if (selectedItem == null || string.IsNullOrEmpty(CurrentTable)) return;
 
@@ -112,9 +112,9 @@ namespace AutoParts_Store.UI.ViewModels
                 return;
             }
 
-            MainWindowViewModel.Instance.ChangeContent(typeof(EditContentViewModel));
+            MainWindowViewModel.Instance?.ChangeContent(typeof(EditContentViewModel));
 
-            if (MainWindowViewModel.Instance.ContentViewModel is EditContentViewModel editVM)
+            if (MainWindowViewModel.Instance?.ContentViewModel is EditContentViewModel editVM)
             {
                 editVM.TableName = CurrentTable;
                 editVM.CurrentItem = itemCopy;

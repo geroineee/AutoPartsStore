@@ -80,7 +80,6 @@ namespace AutoParts_Store.UI.ViewModels
                     ? CreateReferenceControl(column) // ComboBox
                     : CreateBasicControl(column);    // Остальные атрибуты
 
-
                 panel.Children.Add(inputControl);
 
                 // Помещаем панель в Border
@@ -306,10 +305,8 @@ namespace AutoParts_Store.UI.ViewModels
                 else
                 {
                     CopyProperties(CurrentItem, OriginalEntity);
-                    await _tablesService.UpdateItemAsync(
-                        AutoPartsStoreTables.TableDefinitions.First(t => t.DisplayName == TableName).DbName,
-                        OriginalEntity
-                    );
+                    var tableDef = AutoPartsStoreTables.TableDefinitions.First(t => t.DisplayName == TableName).DbName;
+                    await _tablesService.UpdateItemAsync(tableDef, OriginalEntity);
 
                     _currentNotification = CreateNotification("Успех", "Данные сохранены", NotificationManager, _currentNotification);
                 }
