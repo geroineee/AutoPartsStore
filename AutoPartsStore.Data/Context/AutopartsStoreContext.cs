@@ -28,6 +28,8 @@ public partial class AutopartsStoreContext : DbContext
 
     public virtual DbSet<CustomerOrderItem> CustomerOrderItems { get; set; }
 
+    public virtual DbSet<CustomerOrdersProductView> CustomerOrdersProductViews { get; set; }
+
     public virtual DbSet<CustomerPurchaseStatView> CustomerPurchaseStatViews { get; set; }
 
     public virtual DbSet<CustomerRefund> CustomerRefunds { get; set; }
@@ -39,6 +41,8 @@ public partial class AutopartsStoreContext : DbContext
     public virtual DbSet<DeliveryTerm> DeliveryTerms { get; set; }
 
     public virtual DbSet<Employee> Employees { get; set; }
+
+    public virtual DbSet<Position> Positions { get; set; }
 
     public virtual DbSet<Product> Products { get; set; }
 
@@ -75,6 +79,21 @@ public partial class AutopartsStoreContext : DbContext
             entity
                 .HasNoKey()
                 .ToView("available_product_on_storage_view");
+
+            entity.Property(e => e.BatchId).HasColumnName("batch_id");
+            entity.Property(e => e.BatchItemId).HasColumnName("batch_item_id");
+            entity.Property(e => e.CellId)
+                .HasDefaultValueSql("'0'")
+                .HasColumnName("cell_id");
+            entity.Property(e => e.CellName)
+                .HasMaxLength(10)
+                .HasColumnName("cell_name");
+            entity.Property(e => e.CurrentQuantity).HasColumnName("current_quantity");
+            entity.Property(e => e.ProductId).HasColumnName("product_id");
+            entity.Property(e => e.ProductName)
+                .HasMaxLength(100)
+                .HasColumnName("product_name");
+            entity.Property(e => e.QuantityInCell).HasColumnName("quantity_in_cell");
         });
 
         modelBuilder.Entity<Batch>(entity =>
@@ -165,7 +184,10 @@ public partial class AutopartsStoreContext : DbContext
             entity.Property(e => e.PaymentAmount)
                 .HasPrecision(10, 2)
                 .HasColumnName("payment_amount");
-            entity.Property(e => e.PaymentDateDate).HasColumnName("payment_date DATE");
+            entity.Property(e => e.PaymentDateDate)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp")
+                .HasColumnName("payment_date DATE");
 
             entity.HasOne(d => d.CpBatch).WithMany(p => p.CustomPayments)
                 .HasForeignKey(d => d.CpBatchId)
@@ -243,6 +265,21 @@ public partial class AutopartsStoreContext : DbContext
             entity.HasOne(d => d.CoiProduct).WithMany(p => p.CustomerOrderItems)
                 .HasForeignKey(d => d.CoiProductId)
                 .HasConstraintName("customer_order_item_ibfk_2");
+        });
+
+        modelBuilder.Entity<CustomerOrdersProductView>(entity =>
+        {
+            entity
+                .HasNoKey()
+                .ToView("customer_orders_product_view");
+
+            entity.Property(e => e.ProductId).HasColumnName("product_id");
+            entity.Property(e => e.ProductName)
+                .HasMaxLength(100)
+                .HasColumnName("product_name");
+            entity.Property(e => e.TotalOrdered)
+                .HasPrecision(32)
+                .HasColumnName("total_ordered");
         });
 
         modelBuilder.Entity<CustomerPurchaseStatView>(entity =>
@@ -376,6 +413,8 @@ public partial class AutopartsStoreContext : DbContext
 
             entity.ToTable("employee", tb => tb.HasComment("Сотрудник"));
 
+            entity.HasIndex(e => e.EmployeePositionId, "fk_employee_position");
+
             entity.Property(e => e.EmployeeId).HasColumnName("employee_id");
             entity.Property(e => e.EmployeeEmail)
                 .HasMaxLength(100)
@@ -389,14 +428,32 @@ public partial class AutopartsStoreContext : DbContext
             entity.Property(e => e.EmployeePhone)
                 .HasMaxLength(20)
                 .HasColumnName("employee_phone");
-            entity.Property(e => e.EmployeePosition)
-                .HasMaxLength(50)
-                .HasColumnName("employee_position");
+            entity.Property(e => e.EmployeePositionId).HasColumnName("employee_position_id");
             entity.Property(e => e.EmployeeSurname)
                 .HasMaxLength(50)
                 .HasColumnName("employee_surname");
             entity.Property(e => e.FireDate).HasColumnName("fire_date");
             entity.Property(e => e.HireDate).HasColumnName("hire_date");
+
+            entity.HasOne(d => d.EmployeePosition).WithMany(p => p.Employees)
+                .HasForeignKey(d => d.EmployeePositionId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("fk_employee_position");
+        });
+
+        modelBuilder.Entity<Position>(entity =>
+        {
+            entity.HasKey(e => e.PositionId).HasName("PRIMARY");
+
+            entity.ToTable("position");
+
+            entity.Property(e => e.PositionId).HasColumnName("position_id");
+            entity.Property(e => e.PositionDescription)
+                .HasColumnType("text")
+                .HasColumnName("position_description");
+            entity.Property(e => e.PositionName)
+                .HasMaxLength(50)
+                .HasColumnName("position_name");
         });
 
         modelBuilder.Entity<Product>(entity =>
@@ -428,15 +485,15 @@ public partial class AutopartsStoreContext : DbContext
             entity.HasIndex(e => e.SaleEmployeeId, "sale_employee_id");
 
             entity.Property(e => e.SaleId).HasColumnName("sale_id");
+            entity.Property(e => e.IsOrderFulfillment)
+                .HasComment("Является ли продажа выполнением заказа")
+                .HasColumnName("is_order_fulfillment");
             entity.Property(e => e.SaleCustomerId).HasColumnName("sale_customer_id");
             entity.Property(e => e.SaleDate)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp")
                 .HasColumnName("sale_date");
             entity.Property(e => e.SaleEmployeeId).HasColumnName("sale_employee_id");
-            entity.Property(e => e.SaleTotalAmount)
-                .HasPrecision(12, 2)
-                .HasColumnName("sale_total_amount");
 
             entity.HasOne(d => d.SaleCustomer).WithMany(p => p.Sales)
                 .HasForeignKey(d => d.SaleCustomerId)
@@ -455,12 +512,15 @@ public partial class AutopartsStoreContext : DbContext
 
             entity.ToTable("sale_item", tb => tb.HasComment("Состав продажи"));
 
+            entity.HasIndex(e => e.SiProductId, "fk_sale_item_product");
+
             entity.HasIndex(e => e.SiSaleId, "sale_item_ibfk_2");
 
             entity.HasIndex(e => e.SiBatchItemId, "si_batch_item_id");
 
             entity.Property(e => e.SaleItemId).HasColumnName("sale_item_id");
             entity.Property(e => e.SiBatchItemId).HasColumnName("si_batch_item_id");
+            entity.Property(e => e.SiProductId).HasColumnName("si_product_id");
             entity.Property(e => e.SiQuantity).HasColumnName("si_quantity");
             entity.Property(e => e.SiSaleId).HasColumnName("si_sale_id");
 
@@ -468,6 +528,11 @@ public partial class AutopartsStoreContext : DbContext
                 .HasForeignKey(d => d.SiBatchItemId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("sale_item_ibfk_1");
+
+            entity.HasOne(d => d.SiProduct).WithMany(p => p.SaleItems)
+                .HasForeignKey(d => d.SiProductId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("fk_sale_item_product");
 
             entity.HasOne(d => d.SiSale).WithMany(p => p.SaleItems)
                 .HasForeignKey(d => d.SiSaleId)
@@ -544,6 +609,9 @@ public partial class AutopartsStoreContext : DbContext
                 .HasMaxLength(150)
                 .HasColumnName("supplier_address");
             entity.Property(e => e.SupplierCategoryId).HasColumnName("supplier_category_id");
+            entity.Property(e => e.SupplierCountry)
+                .HasMaxLength(50)
+                .HasColumnName("supplier_country");
             entity.Property(e => e.SupplierName)
                 .HasMaxLength(100)
                 .HasColumnName("supplier_name");
@@ -620,9 +688,6 @@ public partial class AutopartsStoreContext : DbContext
                 .HasColumnType("text")
                 .HasColumnName("supplier_order_description");
             entity.Property(e => e.SupplierOrderStatus).HasColumnName("supplier_order_status");
-            entity.Property(e => e.SupplierOrderTotalAmount)
-                .HasPrecision(12, 2)
-                .HasColumnName("supplier_order_total_amount");
 
             entity.HasOne(d => d.Manager).WithMany(p => p.SupplierOrders)
                 .HasForeignKey(d => d.ManagerId)
@@ -701,9 +766,8 @@ public partial class AutopartsStoreContext : DbContext
             entity.Property(e => e.ReplacementCompensation)
                 .IsRequired()
                 .HasDefaultValueSql("'1'")
-                .HasColumnName("replacement _compensation");
+                .HasColumnName("replacement_compensation");
             entity.Property(e => e.ReturnDate).HasColumnName("return_date");
-            entity.Property(e => e.ReturnQuantity).HasColumnName("return_quantity");
             entity.Property(e => e.SrDefectId).HasColumnName("sr_defect_id");
 
             entity.HasOne(d => d.SrDefect).WithMany(p => p.SupplierReturns)

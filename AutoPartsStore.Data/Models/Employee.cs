@@ -10,13 +10,13 @@ public partial class Employee
 {
     public int EmployeeId { get; set; }
 
+    public int EmployeePositionId { get; set; }
+
     public string EmployeeName { get; set; } = null!;
 
     public string EmployeeSurname { get; set; } = null!;
 
     public string? EmployeePatronymic { get; set; }
-
-    public string EmployeePosition { get; set; } = null!;
 
     public string? EmployeePhone { get; set; }
 
@@ -25,6 +25,8 @@ public partial class Employee
     public DateOnly? HireDate { get; set; }
 
     public DateOnly? FireDate { get; set; }
+
+    public virtual Position EmployeePosition { get; set; } = null!;
 
     public virtual ICollection<Sale> Sales { get; set; } = new List<Sale>();
 

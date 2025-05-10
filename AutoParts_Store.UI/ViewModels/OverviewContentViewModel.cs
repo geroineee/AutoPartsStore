@@ -319,14 +319,6 @@ namespace AutoParts_Store.UI.ViewModels
                 return;
             }
 
-            if (entityType == null)
-            {
-                _currentNotification = CreateNotification("Ошибка",
-                    "Не удалось определить тип сущности",
-                    NotificationManager,
-                    _currentNotification);
-                return;
-            }
             var newItem = Activator.CreateInstance(entityType);
 
             MainWindowViewModel.Instance?.ChangeContent(typeof(EditContentViewModel));

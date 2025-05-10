@@ -14,6 +14,8 @@ public partial class Supplier
 
     public string SupplierName { get; set; } = null!;
 
+    public string? SupplierCountry { get; set; }
+
     public string? SupplierAddress { get; set; }
 
     public bool? IsActive { get; set; }

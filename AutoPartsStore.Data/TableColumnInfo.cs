@@ -29,8 +29,6 @@
         /// <summary> Будет ли редактироваться запись </summary>
         public bool IsEditable { get; set; } = true;
 
-        /// <summary> Будет ли редактироваться при создании </summary>
-        public bool IsCreationEditable { get; set; } = true;
 
         /// <summary> Отображать ли в форме создания/редактирования </summary>
         public bool IsVisibleInEdit { get; set; } = true;
@@ -45,7 +43,6 @@
             string foreignKeyProperty = null,
             bool isCompositeKey = false,
             bool isEditable = true,
-            bool isCreationEditable = true,
             bool isVisibleInEdit = true)
         {
             DisplayName = displayName;
@@ -57,7 +54,6 @@
             ForeignKeyProperty = foreignKeyProperty ?? propertyName;
             IsCompositeKey = isCompositeKey;
             IsEditable = isEditable;
-            IsCreationEditable = isCreationEditable;
             IsVisibleInEdit = isVisibleInEdit;
         }
     }

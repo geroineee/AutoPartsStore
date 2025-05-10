@@ -11,8 +11,6 @@ public partial class SupplierReturn
 
     public DateOnly ReturnDate { get; set; }
 
-    public int ReturnQuantity { get; set; }
-
     public decimal? CompensationAmount { get; set; }
 
     public bool? ReplacementCompensation { get; set; }

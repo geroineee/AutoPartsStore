@@ -22,5 +22,7 @@ public partial class Product
 
     public virtual ICollection<DeliveryTerm> DeliveryTerms { get; set; } = new List<DeliveryTerm>();
 
+    public virtual ICollection<SaleItem> SaleItems { get; set; } = new List<SaleItem>();
+
     public virtual ICollection<SupplierOrderItem> SupplierOrderItems { get; set; } = new List<SupplierOrderItem>();
 }

@@ -16,7 +16,10 @@ public partial class Sale
 
     public DateTime SaleDate { get; set; }
 
-    public decimal SaleTotalAmount { get; set; }
+    /// <summary>
+    /// Является ли продажа выполнением заказа
+    /// </summary>
+    public bool IsOrderFulfillment { get; set; }
 
     public virtual Customer SaleCustomer { get; set; } = null!;
 

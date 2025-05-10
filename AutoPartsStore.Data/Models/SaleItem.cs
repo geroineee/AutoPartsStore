@@ -10,6 +10,8 @@ public partial class SaleItem
 {
     public int SaleItemId { get; set; }
 
+    public int SiProductId { get; set; }
+
     public int SiSaleId { get; set; }
 
     public int SiBatchItemId { get; set; }
@@ -19,6 +21,8 @@ public partial class SaleItem
     public virtual ICollection<CustomerRefund> CustomerRefunds { get; set; } = new List<CustomerRefund>();
 
     public virtual BatchItem SiBatchItem { get; set; } = null!;
+
+    public virtual Product SiProduct { get; set; } = null!;
 
     public virtual Sale SiSale { get; set; } = null!;
 }

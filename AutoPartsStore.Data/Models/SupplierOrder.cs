@@ -18,8 +18,6 @@ public partial class SupplierOrder
 
     public DateOnly? ExpectedDeliveryDate { get; set; }
 
-    public decimal? SupplierOrderTotalAmount { get; set; }
-
     public string? SupplierOrderDescription { get; set; }
 
     public bool SupplierOrderStatus { get; set; }

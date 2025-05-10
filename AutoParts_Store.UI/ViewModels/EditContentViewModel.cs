@@ -60,7 +60,7 @@ namespace AutoParts_Store.UI.ViewModels
             foreach (var column in tableDef.Columns.Where(c => c.IsVisible && c.IsVisibleInEdit))
             {
                 // Определяем, является ли колонка редактируемой
-                bool isColumnEditable = isNewItem ? column.IsCreationEditable : column.IsEditable;
+                bool isColumnEditable = isNewItem ? true : column.IsEditable;
 
                 // Border для обводки
                 var border = new Border

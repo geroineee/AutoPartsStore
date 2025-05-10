@@ -3,6 +3,7 @@ using AutoPartsStore.Data.Context;
 using AutoPartsStore.Data.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
+using System.Runtime.InteropServices;
 
 public class AutoPartsStoreTables
 {
@@ -34,6 +35,7 @@ public class AutoPartsStoreTables
                     referenceIdColumn: nameof(SupplierCategory.CategoryId),
                     foreignKeyProperty: nameof(Supplier.SupplierCategoryId)
                 ),
+                new("Страна", nameof(Supplier.SupplierCountry)),
                 new("Адрес", nameof(Supplier.SupplierAddress)),
                 new("Активен", nameof(Supplier.IsActive))
             },
@@ -42,6 +44,7 @@ public class AutoPartsStoreTables
                 .Select(s => new
                 {
                     s.SupplierId,
+                    s.SupplierCountry,
                     s.SupplierName,
                     s.SupplierCategoryId,
                     s.SupplierCategory.CategoryName,
@@ -151,6 +154,34 @@ public class AutoPartsStoreTables
                     bi.BiProductId
                 })
         },
+        // Таблица Брак (Defects)
+        new TableDefinition
+        {
+            DisplayName = "Брак",
+            DbName = "Defects",
+            TableType = typeof(Defect),
+            Columns = new List<TableColumnInfo>
+            {
+                new("Номер брака", "DefectId", isId: true, isEditable: false),
+                new("Номер товара в партии", "BatchItemId", referenceTable: "BatchItems", referenceIdColumn: "BatchItemId", foreignKeyProperty: "DefectBatchItemId"),
+                new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "DefectBatchItemId", isVisibleInEdit: false),
+                new("Количество", "DefectQuantity"),
+                new("Дата обнаружения", "DetectionDate"),
+                new("Описание", "DefectDescription")
+            },
+            QueryBuilder = db => db.Defects
+                .Include(d => d.DefectBatchItem)
+                .ThenInclude(bi => bi.BiProduct)
+                .Select(d => new
+                {
+                    d.DefectId,
+                    d.DefectBatchItem.BatchItemId,
+                    d.DefectBatchItem.BiProduct.ProductName,
+                    d.DefectQuantity,
+                    d.DetectionDate,
+                    d.DefectDescription
+                })
+        },
 
         // Таблица Клиенты (Customers)
         new TableDefinition
@@ -191,7 +222,9 @@ public class AutoPartsStoreTables
                 new("Клиент", "CustomerSurname", referenceTable: "Customers", referenceIdColumn: "CustomerId", foreignKeyProperty: "SaleCustomerId"),
                 new("Сотрудник", "EmployeeSurname", referenceTable: "Employees", referenceIdColumn: "EmployeeId", foreignKeyProperty: "SaleEmployeeId"),
                 new("Дата продажи", "SaleDate"),
-                new("Сумма", "SaleTotalAmount")
+                new("Количество товаров", "SaleQuantity", isVisibleInEdit: false),
+                new("Сумма", "SaleTotalAmount", isVisibleInEdit: false),
+                new("Оформление заказа", "IsOrderFulfillment")
             },
             QueryBuilder = db => db.Sales
                 .Include(s => s.SaleCustomer)
@@ -205,7 +238,9 @@ public class AutoPartsStoreTables
                     CustomerSurname = s.SaleCustomer.CustomerSurname + " " + s.SaleCustomer.CustomerName + " " + s.SaleCustomer.CustomerPatronymic,
                     EmployeeSurname = s.SaleEmployee.EmployeeSurname + " " + s.SaleEmployee.EmployeeName + " " + s.SaleEmployee.EmployeePatronymic,
                     s.SaleDate,
-                    SaleTotalAmount = s.SaleItems.Sum(si => si.SiQuantity * si.SiBatchItem.BiProduct.ProductSalePrice)
+                    SaleQuantity = s.SaleItems.Sum(si => si.SiQuantity),
+                    SaleTotalAmount = (float)s.SaleItems.Sum(si => si.SiQuantity * si.SiBatchItem.BiProduct.ProductSalePrice),
+                    s.IsOrderFulfillment,
                 })
         },
 
@@ -219,7 +254,7 @@ public class AutoPartsStoreTables
             {
                 new("Номер товара в продаже", "SaleItemId", isId: true, isEditable: false),
                 new("Номер продажи", "SaleId",  referenceTable: "Sales", referenceIdColumn: "SaleId", foreignKeyProperty: "SiSaleId"),
-                new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "SiBatchItemId"),
+                new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "SiProductId"),
                 new("Количество", "SiQuantity")
             },
             QueryBuilder = db => db.SaleItems
@@ -237,6 +272,27 @@ public class AutoPartsStoreTables
                 })            
         },
 
+        // Таблица Должности (Positions)
+        new TableDefinition
+        {
+            DisplayName = "Должности",
+            DbName = "Positions",
+            TableType = typeof(Position),
+            Columns = new List<TableColumnInfo>
+            {
+                new("ID", "PositionId", isId: true, isVisible: false),
+                new("Название", "PositionName"),
+                new("Описание", "PositionDescription"),
+
+            },
+            QueryBuilder = db => db.Positions
+                .Select(p => new
+                {
+                    p.PositionId,
+                    p.PositionName,
+                    p.PositionDescription
+                })
+        },
         // Таблица Сотрудники (Employees)
         new TableDefinition
         {
@@ -249,20 +305,28 @@ public class AutoPartsStoreTables
                 new("Имя", "EmployeeName"),
                 new("Фамилия", "EmployeeSurname"),
                 new("Отчество", "EmployeePatronymic"),
-                new("Должность", "EmployeePosition"),
+                new(
+                    displayName: "Должность",
+                    propertyName: "PositionName",
+                    referenceTable: "Positions",
+                    referenceIdColumn: "PositionId",
+                    foreignKeyProperty: "EmployeePositionId"
+                    ),
                 new("Телефон", "EmployeePhone"),
                 new("Email", "EmployeeEmail"),
                 new("Дата найма", "HireDate"),
                 new("Дата увольнения", "FireDate")
             },
             QueryBuilder = db => db.Employees
+                .Include(e => e.EmployeePosition)
                 .Select(e => new
                 {
                     e.EmployeeId,
                     e.EmployeeName,
+                    e.EmployeePosition.PositionName,
                     e.EmployeeSurname,
                     e.EmployeePatronymic,
-                    e.EmployeePosition,
+                    e.EmployeePositionId,
                     e.EmployeePhone,
                     e.EmployeeEmail,
                     e.HireDate,
@@ -474,35 +538,6 @@ public class AutoPartsStoreTables
                 })
         },
 
-        // Таблица Брак (Defects)
-        new TableDefinition
-        {
-            DisplayName = "Брак",
-            DbName = "Defects",
-            TableType = typeof(Defect),
-            Columns = new List<TableColumnInfo>
-            {
-                new("Номер брака", "DefectId", isId: true, isEditable: false),
-                new("Номер товара в партии", "BatchItemId", referenceTable: "BatchItems", referenceIdColumn: "BatchItemId", foreignKeyProperty: "DefectBatchItemId"),
-                new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "DefectBatchItemId"),
-                new("Количество", "DefectQuantity"),
-                new("Дата обнаружения", "DetectionDate"),
-                new("Описание", "DefectDescription")
-            },
-            QueryBuilder = db => db.Defects
-                .Include(d => d.DefectBatchItem)
-                .ThenInclude(bi => bi.BiProduct)
-                .Select(d => new
-                {
-                    d.DefectId,
-                    d.DefectBatchItem.BatchItemId,
-                    d.DefectBatchItem.BiProduct.ProductName,
-                    d.DefectQuantity,
-                    d.DetectionDate,
-                    d.DefectDescription
-                })
-        },
-
         // Таблица Контракты поставщиков (SupplierContracts)
         new TableDefinition
         {
@@ -634,13 +669,12 @@ public class AutoPartsStoreTables
         {
             DisplayName = "Возврат поставщикам",
             DbName = "SupplierReturns",
-            TableType = typeof(CustomerRefund),
+            TableType = typeof(SupplierReturn),
             Columns = new List<TableColumnInfo>
             {
                 new("Товар", "ProductName", isVisibleInEdit: false),
                 new("ID", "SupplierReturnId", isId: true, isVisible: false),
                 new("Номер брака", "DefectId", referenceTable: "Defects", referenceIdColumn: "DefectId", foreignKeyProperty: "SrDefectId"),
-                new("Количество возврата", "ReturnQuantity"),
                 new("Сумма компенсации", "CompensationAmount"),
                 new("Замена товара", "ReplacementCompensation"),
             },
@@ -653,7 +687,6 @@ public class AutoPartsStoreTables
                     sr.SupplierReturnId,
                     sr.SrDefect.DefectId,
                     sr.SrDefect.DefectBatchItem.BiProduct.ProductName,
-                    sr.ReturnQuantity,
                     sr.CompensationAmount,
                     sr.ReplacementCompensation,
                 })
