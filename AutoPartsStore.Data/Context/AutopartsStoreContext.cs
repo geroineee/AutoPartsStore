@@ -50,8 +50,6 @@ public partial class AutopartsStoreContext : DbContext
 
     public virtual DbSet<SaleItem> SaleItems { get; set; }
 
-    public virtual DbSet<StockItem> StockItems { get; set; }
-
     public virtual DbSet<StorageCell> StorageCells { get; set; }
 
     public virtual DbSet<Supplier> Suppliers { get; set; }
@@ -82,9 +80,7 @@ public partial class AutopartsStoreContext : DbContext
 
             entity.Property(e => e.BatchId).HasColumnName("batch_id");
             entity.Property(e => e.BatchItemId).HasColumnName("batch_item_id");
-            entity.Property(e => e.CellId)
-                .HasDefaultValueSql("'0'")
-                .HasColumnName("cell_id");
+            entity.Property(e => e.CellId).HasColumnName("cell_id");
             entity.Property(e => e.CellName)
                 .HasMaxLength(10)
                 .HasColumnName("cell_name");
@@ -152,11 +148,14 @@ public partial class AutopartsStoreContext : DbContext
 
             entity.HasIndex(e => e.BiProductId, "bi_product_id");
 
+            entity.HasIndex(e => e.BiCellId, "fk_batch_item_cell");
+
             entity.HasIndex(e => e.RemainingItem, "remaining_item");
 
             entity.Property(e => e.BatchItemId).HasColumnName("batch_item_id");
             entity.Property(e => e.BatchItemQuantity).HasColumnName("batch_item_quantity");
             entity.Property(e => e.BiBatchId).HasColumnName("bi_batch_id");
+            entity.Property(e => e.BiCellId).HasColumnName("bi_cell_id");
             entity.Property(e => e.BiProductId).HasColumnName("bi_product_id");
             entity.Property(e => e.RemainingItem).HasColumnName("remaining_item");
 
@@ -164,6 +163,11 @@ public partial class AutopartsStoreContext : DbContext
                 .HasForeignKey(d => d.BiBatchId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("batch_item_ibfk_1");
+
+            entity.HasOne(d => d.BiCell).WithMany(p => p.BatchItems)
+                .HasForeignKey(d => d.BiCellId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("fk_batch_item_cell");
 
             entity.HasOne(d => d.BiProduct).WithMany(p => p.BatchItems)
                 .HasForeignKey(d => d.BiProductId)
@@ -480,15 +484,15 @@ public partial class AutopartsStoreContext : DbContext
 
             entity.ToTable("sale", tb => tb.HasComment("Продажа"));
 
+            entity.HasIndex(e => e.SaleCustomerOrderId, "fk_sale_customer_order");
+
             entity.HasIndex(e => e.SaleCustomerId, "sale_customer_id");
 
             entity.HasIndex(e => e.SaleEmployeeId, "sale_employee_id");
 
             entity.Property(e => e.SaleId).HasColumnName("sale_id");
-            entity.Property(e => e.IsOrderFulfillment)
-                .HasComment("Является ли продажа выполнением заказа")
-                .HasColumnName("is_order_fulfillment");
             entity.Property(e => e.SaleCustomerId).HasColumnName("sale_customer_id");
+            entity.Property(e => e.SaleCustomerOrderId).HasColumnName("sale_customer_order_id");
             entity.Property(e => e.SaleDate)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp")
@@ -499,6 +503,10 @@ public partial class AutopartsStoreContext : DbContext
                 .HasForeignKey(d => d.SaleCustomerId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("sale_ibfk_1");
+
+            entity.HasOne(d => d.SaleCustomerOrder).WithMany(p => p.Sales)
+                .HasForeignKey(d => d.SaleCustomerOrderId)
+                .HasConstraintName("fk_sale_customer_order");
 
             entity.HasOne(d => d.SaleEmployee).WithMany(p => p.Sales)
                 .HasForeignKey(d => d.SaleEmployeeId)
@@ -538,29 +546,6 @@ public partial class AutopartsStoreContext : DbContext
                 .HasForeignKey(d => d.SiSaleId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("sale_item_ibfk_2");
-        });
-
-        modelBuilder.Entity<StockItem>(entity =>
-        {
-            entity.HasKey(e => new { e.StockBatchItemId, e.StockStorageCellId })
-                .HasName("PRIMARY")
-                .HasAnnotation("MySql:IndexPrefixLength", new[] { 0, 0 });
-
-            entity.ToTable("stock_item", tb => tb.HasComment("Товар на складе"));
-
-            entity.HasIndex(e => e.StockStorageCellId, "stock_item_ibfk_2");
-
-            entity.Property(e => e.StockBatchItemId).HasColumnName("stock_batch_item_id");
-            entity.Property(e => e.StockStorageCellId).HasColumnName("stock_storage_cell_id");
-            entity.Property(e => e.StockItemQuantity).HasColumnName("stock_item_quantity");
-
-            entity.HasOne(d => d.StockBatchItem).WithMany(p => p.StockItems)
-                .HasForeignKey(d => d.StockBatchItemId)
-                .HasConstraintName("stock_item_ibfk_1");
-
-            entity.HasOne(d => d.StockStorageCell).WithMany(p => p.StockItems)
-                .HasForeignKey(d => d.StockStorageCellId)
-                .HasConstraintName("stock_item_ibfk_2");
         });
 
         modelBuilder.Entity<StorageCell>(entity =>

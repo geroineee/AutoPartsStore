@@ -136,16 +136,19 @@ public class AutoPartsStoreTables
             {
                 new("Номер товара в партии", "BatchItemId", isId: true, isEditable: false),
                 new("Номер партии", "BatchId", referenceTable: "Batches", referenceIdColumn: nameof(Batch.BatchId), foreignKeyProperty: "BiBatchId"),
+                new("Номер ячейки", "CellId", referenceTable: "StorageCells", referenceIdColumn: "CellId", foreignKeyProperty: "BiCellId"),
                 new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "BiProductId"),
                 new("Количество", "BatchItemQuantity"),
                 new("Остаток", "RemainingItem")
             },
             QueryBuilder = db => db.BatchItems
+                .Include(bi => bi.BiCell)
                 .Include(bi => bi.BiBatch)
                 .Include(bi => bi.BiProduct)
                 .Select(bi => new
                 {
                     bi.BatchItemId,
+                    bi.BiCell.CellId,
                     bi.BiBatch.BatchId,
                     bi.BiBatchId,
                     bi.BiProduct.ProductName,
@@ -219,14 +222,15 @@ public class AutoPartsStoreTables
             Columns = new List<TableColumnInfo>
             {
                 new("Номер продажи", "SaleId", isId: true, isEditable: false),
+                new("Номер заказа клиента", "CustomerOrderId", referenceTable: "CustomerOrders", referenceIdColumn: "CustomerOrderId", foreignKeyProperty: "SaleCustomerOrderId"),
                 new("Клиент", "CustomerSurname", referenceTable: "Customers", referenceIdColumn: "CustomerId", foreignKeyProperty: "SaleCustomerId"),
                 new("Сотрудник", "EmployeeSurname", referenceTable: "Employees", referenceIdColumn: "EmployeeId", foreignKeyProperty: "SaleEmployeeId"),
                 new("Дата продажи", "SaleDate"),
                 new("Количество товаров", "SaleQuantity", isVisibleInEdit: false),
                 new("Сумма", "SaleTotalAmount", isVisibleInEdit: false),
-                new("Оформление заказа", "IsOrderFulfillment")
             },
             QueryBuilder = db => db.Sales
+                .Include(s => s.SaleCustomerOrder)
                 .Include(s => s.SaleCustomer)
                 .Include(s => s.SaleEmployee)
                 .Include(s => s.SaleItems)
@@ -235,12 +239,12 @@ public class AutoPartsStoreTables
                 .Select(s => new
                 {
                     s.SaleId,
+                    CustomerOrderId = s.SaleCustomerOrder != null ? (int?)s.SaleCustomerOrder.CustomerOrderId : null,
                     CustomerSurname = s.SaleCustomer.CustomerSurname + " " + s.SaleCustomer.CustomerName + " " + s.SaleCustomer.CustomerPatronymic,
                     EmployeeSurname = s.SaleEmployee.EmployeeSurname + " " + s.SaleEmployee.EmployeeName + " " + s.SaleEmployee.EmployeePatronymic,
                     s.SaleDate,
                     SaleQuantity = s.SaleItems.Sum(si => si.SiQuantity),
                     SaleTotalAmount = (float)s.SaleItems.Sum(si => si.SiQuantity * si.SiBatchItem.BiProduct.ProductSalePrice),
-                    s.IsOrderFulfillment,
                 })
         },
 
@@ -462,46 +466,6 @@ public class AutoPartsStoreTables
                     sc.MaxWeight
                 })
         },
-
-        // Таблица Товары на складе (StockItems)
-        new TableDefinition
-        {
-            DisplayName = "Товары на складе",
-            DbName = "StockItems",
-            TableType = typeof(StockItem),
-            Columns = new List<TableColumnInfo>
-            {
-                new("Номер ячейки", "CellId",
-                    referenceTable: "StorageCells",
-                    referenceIdColumn: "CellId",
-                    foreignKeyProperty: "StockStorageCellId",
-                    isId: true,
-                    isCompositeKey: true,
-                    isEditable: false),
-                new("Товар", "ProductName",
-                    referenceTable: "Products",
-                    referenceIdColumn: "ProductId",
-                    foreignKeyProperty: "StockBatchItemId",
-                    isId: true,
-                    isCompositeKey: true,
-                    isEditable: false),
-                new("Количество", "StockItemQuantity")
-            },
-            QueryBuilder = db => db.StockItems
-                .Include(si => si.StockBatchItem)
-                    .ThenInclude(bi => bi.BiProduct)
-                .Include(si => si.StockStorageCell)
-                .Select(si => new
-                {
-                    si.StockBatchItem.BiProduct.ProductName,
-                    si.StockStorageCell.CellId,
-                    si.StockStorageCell.CellName,
-                    si.StockItemQuantity,
-                    si.StockBatchItemId,
-                    si.StockStorageCellId
-                })
-        },
-
         // Таблица Возвраты клиентов (CustomerRefunds)
         new TableDefinition
         {
@@ -672,9 +636,10 @@ public class AutoPartsStoreTables
             TableType = typeof(SupplierReturn),
             Columns = new List<TableColumnInfo>
             {
-                new("Товар", "ProductName", isVisibleInEdit: false),
                 new("ID", "SupplierReturnId", isId: true, isVisible: false),
                 new("Номер брака", "DefectId", referenceTable: "Defects", referenceIdColumn: "DefectId", foreignKeyProperty: "SrDefectId"),
+                new("Номер товара в партии", "BatchItemId", referenceTable: "BatchItems", referenceIdColumn: "BatchItemId", foreignKeyProperty: "SrBatchItemId", isEditable: false),
+                new("Товар", "ProductName", isVisibleInEdit: false),
                 new("Сумма компенсации", "CompensationAmount"),
                 new("Замена товара", "ReplacementCompensation"),
             },
@@ -685,6 +650,7 @@ public class AutoPartsStoreTables
                 .Select(sr => new
                 {
                     sr.SupplierReturnId,
+                    sr.SrDefect.DefectBatchItem.BatchItemId,
                     sr.SrDefect.DefectId,
                     sr.SrDefect.DefectBatchItem.BiProduct.ProductName,
                     sr.CompensationAmount,

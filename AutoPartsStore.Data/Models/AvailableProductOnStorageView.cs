@@ -13,9 +13,9 @@ public partial class AvailableProductOnStorageView
 
     public int? CurrentQuantity { get; set; }
 
-    public int? CellId { get; set; }
+    public int CellId { get; set; }
 
-    public string? CellName { get; set; }
+    public string CellName { get; set; } = null!;
 
     public int? QuantityInCell { get; set; }
 

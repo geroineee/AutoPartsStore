@@ -112,7 +112,8 @@ namespace AutoParts_Store.UI.ViewModels
                 column.PropertyName,
                 column.ReferenceIdColumn,
                 CurrentItem,
-                column.ForeignKeyProperty
+                column.ForeignKeyProperty,
+                IsNullableForeignKey(CurrentItem.GetType(), column.ForeignKeyProperty) // Передаем информацию о nullable
             );
 
             var comboBox = new ComboBox
@@ -142,13 +143,36 @@ namespace AutoParts_Store.UI.ViewModels
                 if (args.AddedItems.Count > 0)
                 {
                     var selectedItem = args.AddedItems[0];
-                    var id = selectedItem?.GetType().GetProperty(column.ReferenceIdColumn)?.GetValue(selectedItem);
 
-                    var fkProperty = CurrentItem.GetType().GetProperty(column.ForeignKeyProperty);
-                    fkProperty?.SetValue(CurrentItem, id);
+                    // Проверяем, выбрана ли опция "Не выбрано"
+                    if (selectedItem == null)
+                    {
+                        // Присваиваем свойству ForeignKey значение null
+                        var fkProperty = CurrentItem.GetType().GetProperty(column.ForeignKeyProperty);
+                        fkProperty?.SetValue(CurrentItem, null);
+                    }
+                    else
+                    {
+                        // Получаем ID из выбранного элемента
+                        var id = selectedItem?.GetType().GetProperty(column.ReferenceIdColumn)?.GetValue(selectedItem);
+
+                        // Присваиваем свойству ForeignKey полученный ID
+                        var fkProperty = CurrentItem.GetType().GetProperty(column.ForeignKeyProperty);
+                        fkProperty?.SetValue(CurrentItem, id);
+                    }
                 }
             };
+
             return comboBox;
+        }
+
+        private bool IsNullableForeignKey(Type entityType, string foreignKeyProperty)
+        {
+            var property = entityType.GetProperty(foreignKeyProperty);
+            if (property == null) return false; // Если свойство не найдено, считаем, что оно не nullable
+
+            // Проверяем, является ли тип свойства nullable
+            return Nullable.GetUnderlyingType(property.PropertyType) != null;
         }
 
         private Control CreateBasicControl(TableColumnInfo column, bool isColumnEditable)

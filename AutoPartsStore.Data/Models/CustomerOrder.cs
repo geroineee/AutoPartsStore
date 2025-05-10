@@ -18,4 +18,6 @@ public partial class CustomerOrder
     public virtual Customer CoCustomer { get; set; } = null!;
 
     public virtual ICollection<CustomerOrderItem> CustomerOrderItems { get; set; } = new List<CustomerOrderItem>();
+
+    public virtual ICollection<Sale> Sales { get; set; } = new List<Sale>();
 }

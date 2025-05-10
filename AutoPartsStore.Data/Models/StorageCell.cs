@@ -25,5 +25,5 @@ public partial class StorageCell
     /// </summary>
     public int? MaxWeight { get; set; }
 
-    public virtual ICollection<StockItem> StockItems { get; set; } = new List<StockItem>();
+    public virtual ICollection<BatchItem> BatchItems { get; set; } = new List<BatchItem>();
 }

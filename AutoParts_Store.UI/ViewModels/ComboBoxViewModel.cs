@@ -2,6 +2,7 @@
 using ReactiveUI;
 using System;
 using System.Collections.ObjectModel;
+using System.Data.SqlTypes;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -10,6 +11,8 @@ public class ComboBoxViewModel : ViewModelBase
     public ObservableCollection<object> Items { get; } = new();
     private object _selectedItem;
     private bool _isLoading;
+
+    private bool _isNullable;
 
     public object SelectedItem
     {
@@ -29,8 +32,10 @@ public class ComboBoxViewModel : ViewModelBase
         string displayColumn,
         string idColumn,
         object entity,
-        string idPropertyName)
+        string idPropertyName,
+        bool isNullable = false) // Добавлен параметр isNullable
     {
+        _isNullable = isNullable; // Сохраняем значение isNullable
         // Запускаем загрузку асинхронно
         InitializeAsync(tablesService, referenceTable, displayColumn, idColumn, entity, idPropertyName)
             .ConfigureAwait(false);
@@ -80,8 +85,12 @@ public class ComboBoxViewModel : ViewModelBase
             await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
             {
                 Items.Clear();
+                if (_isNullable) // Добавляем "Не выбрано" только если ForeignKey nullable
+                {
+                    Items.Add(null); // Добавляем "Не выбрано"
+                }
 
-                object matchedItem = null;
+                object? matchedItem = null;
                 foreach (var item in items)
                 {
                     Items.Add(item);
@@ -93,8 +102,17 @@ public class ComboBoxViewModel : ViewModelBase
                     }
                 }
 
-                SelectedItem = matchedItem;
-                Console.WriteLine($"Установлен SelectedItem: {SelectedItem != null}");
+                // Проверяем, является ли currentId null
+                if (currentId == null && _isNullable) // Проверяем _isNullable
+                {
+                    SelectedItem = null; // Выбираем "Не выбрано", если currentId равен null
+                    Console.WriteLine($"Установлен SelectedItem: null (Не выбрано)");
+                }
+                else
+                {
+                    SelectedItem = matchedItem;
+                    Console.WriteLine($"Установлен SelectedItem: {SelectedItem != null}");
+                }
             });
         }
         catch (Exception ex)

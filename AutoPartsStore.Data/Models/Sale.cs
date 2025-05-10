@@ -16,12 +16,11 @@ public partial class Sale
 
     public DateTime SaleDate { get; set; }
 
-    /// <summary>
-    /// Является ли продажа выполнением заказа
-    /// </summary>
-    public bool IsOrderFulfillment { get; set; }
+    public int? SaleCustomerOrderId { get; set; }
 
     public virtual Customer SaleCustomer { get; set; } = null!;
+
+    public virtual CustomerOrder? SaleCustomerOrder { get; set; }
 
     public virtual Employee SaleEmployee { get; set; } = null!;
 

@@ -18,13 +18,15 @@ public partial class BatchItem
 
     public int? RemainingItem { get; set; }
 
+    public int BiCellId { get; set; }
+
     public virtual Batch BiBatch { get; set; } = null!;
+
+    public virtual StorageCell BiCell { get; set; } = null!;
 
     public virtual Product BiProduct { get; set; } = null!;
 
     public virtual ICollection<Defect> Defects { get; set; } = new List<Defect>();
 
     public virtual ICollection<SaleItem> SaleItems { get; set; } = new List<SaleItem>();
-
-    public virtual ICollection<StockItem> StockItems { get; set; } = new List<StockItem>();
 }
