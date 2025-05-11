@@ -140,26 +140,29 @@ namespace AutoParts_Store.UI.ViewModels
 
             comboBox.SelectionChanged += (sender, args) =>
             {
-                if (args.AddedItems.Count > 0)
+                var comboBox = (ComboBox)sender;
+                if (comboBox.SelectedIndex == -1)
                 {
-                    var selectedItem = args.AddedItems[0];
-
-                    // Проверяем, выбрана ли опция "Не выбрано"
-                    if (selectedItem == null)
+                    // "Не выбрано" выбрано
+                    var fkProperty = CurrentItem.GetType().GetProperty(column.ForeignKeyProperty);
+                    if (fkProperty != null)
                     {
-                        // Присваиваем свойству ForeignKey значение null
-                        var fkProperty = CurrentItem.GetType().GetProperty(column.ForeignKeyProperty);
-                        fkProperty?.SetValue(CurrentItem, null);
+                        if (Nullable.GetUnderlyingType(fkProperty.PropertyType) != null || fkProperty.PropertyType == typeof(string))
+                        {
+                            fkProperty.SetValue(CurrentItem, null);
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Свойство {column.ForeignKeyProperty} не допускает null.");
+                        }
                     }
-                    else
-                    {
-                        // Получаем ID из выбранного элемента
-                        var id = selectedItem?.GetType().GetProperty(column.ReferenceIdColumn)?.GetValue(selectedItem);
-
-                        // Присваиваем свойству ForeignKey полученный ID
-                        var fkProperty = CurrentItem.GetType().GetProperty(column.ForeignKeyProperty);
-                        fkProperty?.SetValue(CurrentItem, id);
-                    }
+                }
+                else if (comboBox.SelectedItem != null)
+                {
+                    var selectedItem = comboBox.SelectedItem;
+                    var id = selectedItem?.GetType().GetProperty(column.ReferenceIdColumn)?.GetValue(selectedItem);
+                    var fkProperty = CurrentItem.GetType().GetProperty(column.ForeignKeyProperty);
+                    fkProperty?.SetValue(CurrentItem, id);
                 }
             };
 

@@ -3,7 +3,6 @@ using AutoPartsStore.Data.Context;
 using AutoPartsStore.Data.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
-using System.Runtime.InteropServices;
 
 public class AutoPartsStoreTables
 {
@@ -186,6 +185,38 @@ public class AutoPartsStoreTables
                 })
         },
 
+        // Таблица Возврат поставщикам (SupplierReturns) +
+        new TableDefinition
+        {
+            DisplayName = "Возврат поставщикам",
+            DbName = "SupplierReturns",
+            TableType = typeof(SupplierReturn),
+            Columns = new List<TableColumnInfo>
+            {
+                new("ID", "SupplierReturnId", isId: true, isVisible: false),
+                new("Номер брака", "DefectId", referenceTable: "Defects", referenceIdColumn: "DefectId", foreignKeyProperty: "SrDefectId"),
+                new("Номер товара в партии", "BatchItemId", referenceTable: "BatchItems", referenceIdColumn: "BatchItemId", foreignKeyProperty: "SrBatchItemId", isVisibleInEdit: false),
+                new("Товар", "ProductName", isVisibleInEdit: false),
+                new("Дата возврата", "ReturnDate"),
+                new("Сумма компенсации", "CompensationAmount"),
+                new("Замена товара", "ReplacementCompensation"),
+            },
+            QueryBuilder = db => db.SupplierReturns
+                .Include(sr => sr.SrDefect)
+                    .ThenInclude(d => d.DefectBatchItem)
+                    .ThenInclude(bi => bi.BiProduct)
+                .Select(sr => new
+                {
+                    sr.SupplierReturnId,
+                    sr.SrDefect.DefectBatchItem.BatchItemId,
+                    sr.SrDefect.DefectId,
+                    sr.ReturnDate,
+                    sr.SrDefect.DefectBatchItem.BiProduct.ProductName,
+                    sr.CompensationAmount,
+                    sr.ReplacementCompensation,
+                })
+        },
+
         // Таблица Клиенты (Customers)
         new TableDefinition
         {
@@ -256,8 +287,8 @@ public class AutoPartsStoreTables
             TableType = typeof(SaleItem),
             Columns = new List<TableColumnInfo>
             {
-                new("Номер товара в продаже", "SaleItemId", isId: true, isEditable: false),
                 new("Номер продажи", "SaleId",  referenceTable: "Sales", referenceIdColumn: "SaleId", foreignKeyProperty: "SiSaleId"),
+                new("Номер товара в продаже", "SaleItemId", isId: true, isEditable: false),
                 new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "SiProductId"),
                 new("Количество", "SiQuantity")
             },
@@ -366,7 +397,7 @@ public class AutoPartsStoreTables
                     so.Recipient.SupplierName,
                     so.SupplierOrderDate,
                     so.ExpectedDeliveryDate,
-                    SupplierOrderTotalAmount = so.SupplierOrderItems.Sum(soi => soi.SoiQuantity * soi.SoiProduct.ProductSalePrice),
+                    SupplierOrderTotalAmount = (float)so.SupplierOrderItems.Sum(soi => soi.SoiQuantity * soi.SoiProduct.ProductSalePrice),
                     so.SupplierOrderStatus,
                     so.RecipientId
                 })
@@ -438,34 +469,6 @@ public class AutoPartsStoreTables
                 })
         },
 
-        // Таблица Ячейки склада (StorageCells)
-        new TableDefinition
-        {
-            DisplayName = "Ячейки склада",
-            DbName = "StorageCells",
-            TableType = typeof(StorageCell),
-            Columns = new List<TableColumnInfo>
-            {
-                new("ID", "CellId", isId: true, isVisible: false),
-                new("Название", "CellName"),
-                new("Описание", "LocationDescription"),
-                new("Ширина", "Width"),
-                new("Глубина", "Depth"),
-                new("Высота", "Height"),
-                new("Макс. вес", "MaxWeight")
-            },
-            QueryBuilder = db => db.StorageCells
-                .Select(sc => new
-                {
-                    sc.CellId,
-                    sc.CellName,
-                    sc.LocationDescription,
-                    sc.Width,
-                    sc.Depth,
-                    sc.Height,
-                    sc.MaxWeight
-                })
-        },
         // Таблица Возвраты клиентов (CustomerRefunds)
         new TableDefinition
         {
@@ -546,7 +549,7 @@ public class AutoPartsStoreTables
             TableType = typeof(CustomerOrder),
             Columns = new List<TableColumnInfo>
             {
-                new("Номер заказа", "CustomerOrderId", isId: true, isVisible: false),
+                new("Номер заказа", "CustomerOrderId", isId: true, isEditable: false),
                 new TableColumnInfo(
                     displayName: "Клиент",
                     propertyName: "CustomerSurname",
@@ -584,6 +587,7 @@ public class AutoPartsStoreTables
                     foreignKeyProperty: "CoiCustomerOrderId",
                     isId: true,
                     isCompositeKey: true),
+                new("Клиент", "CustomerSurname", isVisibleInEdit: false),
                 new("Товар", "ProductName",
                     isEditable: false,
                     referenceTable: "Products",
@@ -596,6 +600,7 @@ public class AutoPartsStoreTables
             QueryBuilder = db => db.CustomerOrderItems
                 .Include(coi => coi.CoiProduct)
                 .Include(coi => coi.CoiCustomerOrder)
+            .ThenInclude(co => co.CoCustomer)
                 .Select(coi => new
                 {
                     coi.CoiCustomerOrder.CustomerOrderId,
@@ -603,6 +608,9 @@ public class AutoPartsStoreTables
                     coi.CoiProductId,
                     coi.CoiCustomerOrderId,
                     coi.CoiQuantity,
+                    CustomerSurname = coi.CoiCustomerOrder.CoCustomer.CustomerName + " "
+                    + coi.CoiCustomerOrder.CoCustomer.CustomerSurname + " "
+                    + coi.CoiCustomerOrder.CoCustomer.CustomerPatronymic,
                 })
         },
         // Таблица Таможенные платежи (CustomPayments)
@@ -626,35 +634,6 @@ public class AutoPartsStoreTables
                     cp.CpBatch.BatchId,
                     cp.PaymentAmount,
                     cp.PaymentDateDate
-                })
-        },
-        // Таблица Возврат поставщикам (SupplierReturns)
-        new TableDefinition
-        {
-            DisplayName = "Возврат поставщикам",
-            DbName = "SupplierReturns",
-            TableType = typeof(SupplierReturn),
-            Columns = new List<TableColumnInfo>
-            {
-                new("ID", "SupplierReturnId", isId: true, isVisible: false),
-                new("Номер брака", "DefectId", referenceTable: "Defects", referenceIdColumn: "DefectId", foreignKeyProperty: "SrDefectId"),
-                new("Номер товара в партии", "BatchItemId", referenceTable: "BatchItems", referenceIdColumn: "BatchItemId", foreignKeyProperty: "SrBatchItemId", isEditable: false),
-                new("Товар", "ProductName", isVisibleInEdit: false),
-                new("Сумма компенсации", "CompensationAmount"),
-                new("Замена товара", "ReplacementCompensation"),
-            },
-            QueryBuilder = db => db.SupplierReturns
-                .Include(sr => sr.SrDefect)
-                    .ThenInclude(d => d.DefectBatchItem)
-                    .ThenInclude(bi => bi.BiProduct)
-                .Select(sr => new
-                {
-                    sr.SupplierReturnId,
-                    sr.SrDefect.DefectBatchItem.BatchItemId,
-                    sr.SrDefect.DefectId,
-                    sr.SrDefect.DefectBatchItem.BiProduct.ProductName,
-                    sr.CompensationAmount,
-                    sr.ReplacementCompensation,
                 })
         },
     };
@@ -831,7 +810,7 @@ public class AutoPartsStoreTables
 
             var dbSet = (IQueryable)dbSetProperty.GetValue(db);
 
-            var idColumn = tableDef.Columns.First(c => c.IsId || c.PropertyName.EndsWith("Id"));
+            var idColumn = tableDef.Columns.First(c => c.IsId);
             var idPropertyName = idColumn.PropertyName;
 
             var parameter = Expression.Parameter(dbSet.ElementType, "x");

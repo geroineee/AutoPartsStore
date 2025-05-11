@@ -190,13 +190,6 @@ namespace AutoParts_Store.UI.ViewModels
 
         public async Task ExecuteSearch()
         {
-            if (string.IsNullOrEmpty(SearchColumn) || string.IsNullOrEmpty(SearchText))
-            {
-                _currentNotification = CreateNotification("Предупреждение", "Необходимо указать поле и текст поиска",
-                    NotificationManager,
-                    _currentNotification);
-            }
-
             await SearchInCurrentTable(SearchColumn, SearchText);
         }
 
