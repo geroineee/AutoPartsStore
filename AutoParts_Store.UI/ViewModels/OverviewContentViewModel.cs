@@ -1,4 +1,5 @@
-﻿using AutoPartsStore.Data.Context;
+﻿using AutoParts_Store.UI.Services;
+using AutoPartsStore.Data.Context;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Data;
@@ -214,8 +215,18 @@ namespace AutoParts_Store.UI.ViewModels
                 DataGridColumn column;
                 var propertyInfo = TableData.FirstOrDefault()?.GetType().GetProperty(columnInfo.PropertyName);
 
+                if (propertyInfo != null && (propertyInfo.PropertyType == typeof(decimal) || propertyInfo.PropertyType == typeof(decimal?)))
+                {
+                    // Create a SimpleNumericConverter with the "N2" format
+                    var converter = new SimpleNumericConverter(propertyInfo.PropertyType, "N2");
 
-                if (propertyInfo != null && (propertyInfo.PropertyType == typeof(bool) || propertyInfo.PropertyType == typeof(bool?)))
+                    column = new DataGridTextColumn
+                    {
+                        Header = columnInfo.DisplayName,
+                        Binding = new Binding(columnInfo.PropertyName) { Converter = converter },
+                    };
+                }
+                else if (propertyInfo != null && (propertyInfo.PropertyType == typeof(bool) || propertyInfo.PropertyType == typeof(bool?)))
                 {
                     column = new DataGridTemplateColumn
                     {

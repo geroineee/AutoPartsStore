@@ -14,6 +14,7 @@ using Avalonia.Notification;
 using Microsoft.EntityFrameworkCore;
 using ReactiveUI;
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
@@ -41,6 +42,8 @@ namespace AutoParts_Store.UI.ViewModels
         {
 
         }
+
+        private readonly Dictionary<string, List<object>> _anonymousItemLists = new(); 
 
         public void CreateEditControls()
         {
@@ -113,7 +116,7 @@ namespace AutoParts_Store.UI.ViewModels
                 column.ReferenceIdColumn,
                 CurrentItem,
                 column.ForeignKeyProperty,
-                IsNullableForeignKey(CurrentItem.GetType(), column.ForeignKeyProperty) // Передаем информацию о nullable
+                IsNullableForeignKey(CurrentItem.GetType(), column.ForeignKeyProperty)
             );
 
             var comboBox = new ComboBox
@@ -128,14 +131,23 @@ namespace AutoParts_Store.UI.ViewModels
                 },
                 ItemTemplate = new FuncDataTemplate<object>((item, _) =>
                 {
-                    var displayText = vm.GetDisplayText(item, column.PropertyName);
+                    string displayText;
+                    if (column.ReferenceTable == "Employees" || column.ReferenceTable == "Customers")
+                    {
+                        displayText = GetFullName(item, column.ReferenceTable);
+                    }
+                    else
+                    {
+                        displayText = vm.GetDisplayText(item, column.PropertyName);
+                    }
+
                     return new TextBlock
                     {
                         Text = displayText,
                         FontStyle = displayText == "Не выбрано" ? FontStyle.Italic : FontStyle.Normal,
                     };
                 }),
-                IsEnabled = isColumnEditable // Учитываем возможность редактирования
+                IsEnabled = isColumnEditable
             };
 
             comboBox.SelectionChanged += (sender, args) =>
@@ -143,7 +155,6 @@ namespace AutoParts_Store.UI.ViewModels
                 var comboBox = (ComboBox)sender;
                 if (comboBox.SelectedIndex == -1)
                 {
-                    // "Не выбрано" выбрано
                     var fkProperty = CurrentItem.GetType().GetProperty(column.ForeignKeyProperty);
                     if (fkProperty != null)
                     {
@@ -167,6 +178,37 @@ namespace AutoParts_Store.UI.ViewModels
             };
 
             return comboBox;
+        }
+
+        private string GetFullName(object item, string referenceTable)
+        {
+            if (item == null) return "Не выбрано";
+
+            try
+            {
+                if (referenceTable == "Employees")
+                {
+                    var surname = item.GetType().GetProperty("EmployeeSurname")?.GetValue(item)?.ToString();
+                    var name = item.GetType().GetProperty("EmployeeName")?.GetValue(item)?.ToString();
+                    var patronymic = item.GetType().GetProperty("EmployeePatronymic")?.GetValue(item)?.ToString();
+
+                    return $"{surname} {name} {patronymic}";
+                }
+                else if (referenceTable == "Customers")
+                {
+                    var surname = item.GetType().GetProperty("CustomerSurname")?.GetValue(item)?.ToString();
+                    var name = item.GetType().GetProperty("CustomerName")?.GetValue(item)?.ToString();
+                    var patronymic = item.GetType().GetProperty("CustomerPatronymic")?.GetValue(item)?.ToString();
+                    return $"{surname} {name} {patronymic}";
+                }
+
+                return item.ToString() ?? "Неизвестное значение";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка при получении полного имени: {ex.Message}");
+                return "Ошибка отображения";
+            }
         }
 
         private bool IsNullableForeignKey(Type entityType, string foreignKeyProperty)

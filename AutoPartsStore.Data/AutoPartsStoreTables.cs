@@ -52,6 +52,43 @@ public class AutoPartsStoreTables
                 })
         },
 
+        // Таблица Контракты поставщиков (SupplierContracts)
+        new TableDefinition
+        {
+            DisplayName = "Контракты поставщиков",
+            DbName = "SupplierContracts",
+            TableType = typeof(SupplierContract),
+            Columns = new List<TableColumnInfo>
+            {
+                new("ID", "ContractId", isId: true, isVisible: false),
+                new TableColumnInfo(
+                    displayName: "Поставщик",
+                    propertyName: "SupplierName",
+                    referenceTable: "Suppliers",
+                    referenceIdColumn: "SupplierId",
+                    foreignKeyProperty: "ContractSupplierId"
+                ),
+                new("Номер контракта", "ContractNumber"),
+                new("Дата начала", "StartDate"),
+                new("Дата окончания", "EndDate"),
+                new("Условия", "Terms"),
+                new("Скидка", "Discount")
+            },
+            QueryBuilder = db => db.SupplierContracts
+                .Include(sc => sc.ContractSupplier)
+                .Select(sc => new
+                {
+                    sc.ContractId,
+                    sc.ContractNumber,
+                    sc.StartDate,
+                    sc.EndDate,
+                    sc.Terms,
+                    sc.Discount,
+                    sc.ContractSupplier.SupplierName,
+                    sc.ContractSupplierId
+                })
+        },
+
         // Таблица Категории поставщиков (SupplierCategories)
         new TableDefinition
         {
@@ -77,298 +114,6 @@ public class AutoPartsStoreTables
                 })
         },
 
-        // Таблица Товары (Products)
-        new TableDefinition
-        {
-            DisplayName = "Товары",
-            DbName = "Products",
-            TableType = typeof(Product),
-            Columns = new List<TableColumnInfo>
-            {
-                new("ID", "ProductId", isId: true, isVisible:false),
-                new("Наименование", "ProductName"),
-                new("Цена продажи", "ProductSalePrice"),
-                new("Описание", "ProductDescription")
-            },
-            QueryBuilder = db => db.Products
-                .Select(p => new
-                {
-                    p.ProductId,
-                    p.ProductName,
-                    p.ProductSalePrice,
-                    p.ProductDescription
-                })
-        },
-
-        // Таблица Партии (Batches)
-        new TableDefinition
-        {
-            DisplayName = "Партии",
-            DbName = "Batches",
-            TableType = typeof(Batch),
-            Columns = new List<TableColumnInfo>
-            {
-                new("Номер партии", "BatchId", isId: true, isEditable: false),
-                new("Поставщик", "SupplierName", referenceTable: "Suppliers", referenceIdColumn: "SupplierId", foreignKeyProperty: "BatchSupplierId"),
-                new("Дата доставки", "DeliveryDate"),
-                new("Описание", "BatchDescription")
-            },
-            QueryBuilder = db => db.Batches
-                .Include(b => b.BatchSupplier)
-                .Select(b => new
-                {
-                    b.BatchId,
-                    b.BatchSupplier.SupplierName,
-                    b.DeliveryDate,
-                    b.BatchDescription,
-                    b.BatchSupplierId
-                })
-        },
-
-        // Таблица Состав партии (BatchItems)
-        new TableDefinition
-        {
-            DisplayName = "Состав партии",
-            DbName = "BatchItems",
-            TableType = typeof(BatchItem),
-            Columns = new List<TableColumnInfo>
-            {
-                new("Номер товара в партии", "BatchItemId", isId: true, isEditable: false),
-                new("Номер партии", "BatchId", referenceTable: "Batches", referenceIdColumn: nameof(Batch.BatchId), foreignKeyProperty: "BiBatchId"),
-                new("Номер ячейки", "CellId", referenceTable: "StorageCells", referenceIdColumn: "CellId", foreignKeyProperty: "BiCellId"),
-                new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "BiProductId"),
-                new("Количество", "BatchItemQuantity"),
-                new("Остаток", "RemainingItem")
-            },
-            QueryBuilder = db => db.BatchItems
-                .Include(bi => bi.BiCell)
-                .Include(bi => bi.BiBatch)
-                .Include(bi => bi.BiProduct)
-                .Select(bi => new
-                {
-                    bi.BatchItemId,
-                    bi.BiCell.CellId,
-                    bi.BiBatch.BatchId,
-                    bi.BiBatchId,
-                    bi.BiProduct.ProductName,
-                    bi.BatchItemQuantity,
-                    bi.RemainingItem,
-                    bi.BiProductId
-                })
-        },
-        // Таблица Брак (Defects)
-        new TableDefinition
-        {
-            DisplayName = "Брак",
-            DbName = "Defects",
-            TableType = typeof(Defect),
-            Columns = new List<TableColumnInfo>
-            {
-                new("Номер брака", "DefectId", isId: true, isEditable: false),
-                new("Номер товара в партии", "BatchItemId", referenceTable: "BatchItems", referenceIdColumn: "BatchItemId", foreignKeyProperty: "DefectBatchItemId"),
-                new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "DefectBatchItemId", isVisibleInEdit: false),
-                new("Количество", "DefectQuantity"),
-                new("Дата обнаружения", "DetectionDate"),
-                new("Описание", "DefectDescription")
-            },
-            QueryBuilder = db => db.Defects
-                .Include(d => d.DefectBatchItem)
-                .ThenInclude(bi => bi.BiProduct)
-                .Select(d => new
-                {
-                    d.DefectId,
-                    d.DefectBatchItem.BatchItemId,
-                    d.DefectBatchItem.BiProduct.ProductName,
-                    d.DefectQuantity,
-                    d.DetectionDate,
-                    d.DefectDescription
-                })
-        },
-
-        // Таблица Возврат поставщикам (SupplierReturns) +
-        new TableDefinition
-        {
-            DisplayName = "Возврат поставщикам",
-            DbName = "SupplierReturns",
-            TableType = typeof(SupplierReturn),
-            Columns = new List<TableColumnInfo>
-            {
-                new("ID", "SupplierReturnId", isId: true, isVisible: false),
-                new("Номер брака", "DefectId", referenceTable: "Defects", referenceIdColumn: "DefectId", foreignKeyProperty: "SrDefectId"),
-                new("Номер товара в партии", "BatchItemId", referenceTable: "BatchItems", referenceIdColumn: "BatchItemId", foreignKeyProperty: "SrBatchItemId", isVisibleInEdit: false),
-                new("Товар", "ProductName", isVisibleInEdit: false),
-                new("Дата возврата", "ReturnDate"),
-                new("Сумма компенсации", "CompensationAmount"),
-                new("Замена товара", "ReplacementCompensation"),
-            },
-            QueryBuilder = db => db.SupplierReturns
-                .Include(sr => sr.SrDefect)
-                    .ThenInclude(d => d.DefectBatchItem)
-                    .ThenInclude(bi => bi.BiProduct)
-                .Select(sr => new
-                {
-                    sr.SupplierReturnId,
-                    sr.SrDefect.DefectBatchItem.BatchItemId,
-                    sr.SrDefect.DefectId,
-                    sr.ReturnDate,
-                    sr.SrDefect.DefectBatchItem.BiProduct.ProductName,
-                    sr.CompensationAmount,
-                    sr.ReplacementCompensation,
-                })
-        },
-
-        // Таблица Клиенты (Customers)
-        new TableDefinition
-        {
-            DisplayName = "Клиенты",
-            DbName = "Customers",
-            TableType = typeof(Customer),
-            Columns = new List<TableColumnInfo>
-            {
-                new("ID", "CustomerId", isId: true, isVisible: false),
-                new("Имя", "CustomerName"),
-                new("Фамилия", "CustomerSurname"),
-                new("Отчество", "CustomerPatronymic"),
-                new("Телефон", "CustomerPhone"),
-                new("Email", "CustomerEmail")
-            },
-            QueryBuilder = db => db.Customers
-                .Select(c => new
-                {
-                    c.CustomerId,
-                    c.CustomerName,
-                    c.CustomerSurname,
-                    c.CustomerPatronymic,
-                    c.CustomerPhone,
-                    c.CustomerEmail
-                })
-        },
-
-        // Таблица Продажи (Sales)
-        new TableDefinition
-        {
-            DisplayName = "Продажи",
-            DbName = "Sales",
-            TableType = typeof(Sale),
-            Columns = new List<TableColumnInfo>
-            {
-                new("Номер продажи", "SaleId", isId: true, isEditable: false),
-                new("Номер заказа клиента", "CustomerOrderId", referenceTable: "CustomerOrders", referenceIdColumn: "CustomerOrderId", foreignKeyProperty: "SaleCustomerOrderId"),
-                new("Клиент", "CustomerSurname", referenceTable: "Customers", referenceIdColumn: "CustomerId", foreignKeyProperty: "SaleCustomerId"),
-                new("Сотрудник", "EmployeeSurname", referenceTable: "Employees", referenceIdColumn: "EmployeeId", foreignKeyProperty: "SaleEmployeeId"),
-                new("Дата продажи", "SaleDate"),
-                new("Количество товаров", "SaleQuantity", isVisibleInEdit: false),
-                new("Сумма", "SaleTotalAmount", isVisibleInEdit: false),
-            },
-            QueryBuilder = db => db.Sales
-                .Include(s => s.SaleCustomerOrder)
-                .Include(s => s.SaleCustomer)
-                .Include(s => s.SaleEmployee)
-                .Include(s => s.SaleItems)
-                    .ThenInclude(si => si.SiBatchItem) 
-                    .ThenInclude(bi => bi.BiProduct)
-                .Select(s => new
-                {
-                    s.SaleId,
-                    CustomerOrderId = s.SaleCustomerOrder != null ? (int?)s.SaleCustomerOrder.CustomerOrderId : null,
-                    CustomerSurname = s.SaleCustomer.CustomerSurname + " " + s.SaleCustomer.CustomerName + " " + s.SaleCustomer.CustomerPatronymic,
-                    EmployeeSurname = s.SaleEmployee.EmployeeSurname + " " + s.SaleEmployee.EmployeeName + " " + s.SaleEmployee.EmployeePatronymic,
-                    s.SaleDate,
-                    SaleQuantity = s.SaleItems.Sum(si => si.SiQuantity),
-                    SaleTotalAmount = (float)s.SaleItems.Sum(si => si.SiQuantity * si.SiBatchItem.BiProduct.ProductSalePrice),
-                })
-        },
-
-        // Таблица Состав продажи (SaleItems)
-        new TableDefinition
-        {
-            DisplayName = "Состав продажи",
-            DbName = "SaleItems",
-            TableType = typeof(SaleItem),
-            Columns = new List<TableColumnInfo>
-            {
-                new("Номер продажи", "SaleId",  referenceTable: "Sales", referenceIdColumn: "SaleId", foreignKeyProperty: "SiSaleId"),
-                new("Номер товара в продаже", "SaleItemId", isId: true, isEditable: false),
-                new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "SiProductId"),
-                new("Количество", "SiQuantity")
-            },
-            QueryBuilder = db => db.SaleItems
-                .Include(si => si.SiSale)
-                .Include(si => si.SiBatchItem)
-                .ThenInclude(bi => bi.BiProduct)
-                .Select(si => new
-                {
-                    si.SaleItemId,
-                    si.SiSaleId,
-                    si.SiSale.SaleId,
-                    si.SiBatchItem.BiProduct.ProductName,
-                    si.SiQuantity,
-                    ProductPrice = si.SiBatchItem.BiProduct.ProductSalePrice
-                })            
-        },
-
-        // Таблица Должности (Positions)
-        new TableDefinition
-        {
-            DisplayName = "Должности",
-            DbName = "Positions",
-            TableType = typeof(Position),
-            Columns = new List<TableColumnInfo>
-            {
-                new("ID", "PositionId", isId: true, isVisible: false),
-                new("Название", "PositionName"),
-                new("Описание", "PositionDescription"),
-
-            },
-            QueryBuilder = db => db.Positions
-                .Select(p => new
-                {
-                    p.PositionId,
-                    p.PositionName,
-                    p.PositionDescription
-                })
-        },
-        // Таблица Сотрудники (Employees)
-        new TableDefinition
-        {
-            DisplayName = "Сотрудники",
-            DbName = "Employees",
-            TableType = typeof(Employee),
-            Columns = new List<TableColumnInfo>
-            {
-                new("ID", "EmployeeId", isId: true, isVisible: false),
-                new("Имя", "EmployeeName"),
-                new("Фамилия", "EmployeeSurname"),
-                new("Отчество", "EmployeePatronymic"),
-                new(
-                    displayName: "Должность",
-                    propertyName: "PositionName",
-                    referenceTable: "Positions",
-                    referenceIdColumn: "PositionId",
-                    foreignKeyProperty: "EmployeePositionId"
-                    ),
-                new("Телефон", "EmployeePhone"),
-                new("Email", "EmployeeEmail"),
-                new("Дата найма", "HireDate"),
-                new("Дата увольнения", "FireDate")
-            },
-            QueryBuilder = db => db.Employees
-                .Include(e => e.EmployeePosition)
-                .Select(e => new
-                {
-                    e.EmployeeId,
-                    e.EmployeeName,
-                    e.EmployeePosition.PositionName,
-                    e.EmployeeSurname,
-                    e.EmployeePatronymic,
-                    e.EmployeePositionId,
-                    e.EmployeePhone,
-                    e.EmployeeEmail,
-                    e.HireDate,
-                    e.FireDate
-                })
-        },
-
         // Таблица Заказы поставщикам (SupplierOrders)
         new TableDefinition
         {
@@ -390,6 +135,7 @@ public class AutoPartsStoreTables
                 .Include(so => so.Recipient)
                 .Include(so => so.SupplierOrderItems)
                     .ThenInclude(soi => soi.SoiProduct)
+                    .ThenInclude(p => p.DeliveryTerms)
                 .Select(so => new
                 {
                     so.SupplierOrderId,
@@ -397,7 +143,8 @@ public class AutoPartsStoreTables
                     so.Recipient.SupplierName,
                     so.SupplierOrderDate,
                     so.ExpectedDeliveryDate,
-                    SupplierOrderTotalAmount = (float)so.SupplierOrderItems.Sum(soi => soi.SoiQuantity * soi.SoiProduct.ProductSalePrice),
+                    SupplierOrderTotalAmount = so.SupplierOrderItems.Sum(soi => soi.SoiQuantity
+                    * soi.SoiProduct.DeliveryTerms.First(dt => dt.DtProductId == soi.SoiProductId).DeliveryPrice),
                     so.SupplierOrderStatus,
                     so.RecipientId
                 })
@@ -469,78 +216,207 @@ public class AutoPartsStoreTables
                 })
         },
 
-        // Таблица Возвраты клиентов (CustomerRefunds)
+        // Таблица Товары (Products)
         new TableDefinition
         {
-            DisplayName = "Возвраты клиентов",
-            DbName = "CustomerRefunds",
-            TableType = typeof(CustomerRefund),
+            DisplayName = "Товары",
+            DbName = "Products",
+            TableType = typeof(Product),
             Columns = new List<TableColumnInfo>
             {
-                new("ID", "CustomerRefundId", isId: true, isVisible: false),
-                new("Товар", "ProductName", isVisibleInEdit: false),
-                new("Номер товара в продаже", "SaleItemId",
-                    referenceTable: "SaleItems",
-                    referenceIdColumn: "SaleItemId",
-                    foreignKeyProperty: "CrSaleItemId"),
-                new("Количество", "CrQuantity"),
-                new("Дата возврата", "RefundDate"),
-                new("Сумма возврата", "RefundAmount"),
-                new("Бракованный", "IsDefect"),
+                new("ID", "ProductId", isId: true, isVisible:false),
+                new("Наименование", "ProductName"),
+                new("Цена продажи", "ProductSalePrice"),
+                new("Описание", "ProductDescription")
             },
-            QueryBuilder = db => db.CustomerRefunds
-                .Include(cr => cr.CrSaleItem)
-                .ThenInclude(si => si.SiBatchItem)
-                .ThenInclude(bi => bi.BiProduct)
-                .Select(cr => new
+            QueryBuilder = db => db.Products
+                .Select(p => new
                 {
-                    cr.CustomerRefundId,
-                    cr.CrSaleItem.SaleItemId,
-                    cr.CrSaleItem.SiBatchItem.BatchItemId,
-                    cr.CrSaleItem.SiBatchItem.BiProduct.ProductName,
-                    cr.CrQuantity,
-                    cr.RefundDate,
-                    cr.RefundAmount,
-                    cr.IsDefect
+                    p.ProductId,
+                    p.ProductName,
+                    p.ProductSalePrice,
+                    p.ProductDescription
                 })
         },
 
-        // Таблица Контракты поставщиков (SupplierContracts)
+        // Таблица Партии (Batches)
         new TableDefinition
         {
-            DisplayName = "Контракты поставщиков",
-            DbName = "SupplierContracts",
-            TableType = typeof(SupplierContract),
+            DisplayName = "Партии",
+            DbName = "Batches",
+            TableType = typeof(Batch),
             Columns = new List<TableColumnInfo>
             {
-                new("ID", "ContractId", isId: true, isVisible: false),
-                new TableColumnInfo(
-                    displayName: "Поставщик",
-                    propertyName: "SupplierName",
-                    referenceTable: "Suppliers",
-                    referenceIdColumn: "SupplierId",
-                    foreignKeyProperty: "ContractSupplierId"
-                ),
-                new("Номер контракта", "ContractNumber"),
-                new("Дата начала", "StartDate"),
-                new("Дата окончания", "EndDate"),
-                new("Условия", "Terms"),
-                new("Скидка", "Discount")
+                new("Номер партии", "BatchId", isId: true, isEditable: false),
+                new("Номер заказа", "SupplierOrderId", referenceTable: "SupplierOrders", referenceIdColumn: "SupplierOrderId", foreignKeyProperty: "BatchSupplierOrderId"),
+                new("Поставщик", "SupplierName", referenceTable: "Suppliers", referenceIdColumn: "SupplierId", foreignKeyProperty: "BatchSupplierOrderId", isVisibleInEdit: false),
+                new("Дата доставки", "DeliveryDate"),
+                new("Описание", "BatchDescription")
             },
-            QueryBuilder = db => db.SupplierContracts
-                .Include(sc => sc.ContractSupplier)
-                .Select(sc => new
+            QueryBuilder = db => db.Batches
+                .Include(b => b.BatchSupplierOrder)
+                    .ThenInclude(so => so.Recipient)
+                .Select(b => new
                 {
-                    sc.ContractId,
-                    sc.ContractNumber,
-                    sc.StartDate,
-                    sc.EndDate,
-                    sc.Terms,
-                    sc.Discount,
-                    sc.ContractSupplier.SupplierName,
-                    sc.ContractSupplierId
+                    b.BatchId,
+                    b.BatchSupplierOrder.Recipient.SupplierName,
+                    b.DeliveryDate,
+                    b.BatchDescription,
+                    b.BatchSupplierOrder.SupplierOrderId,
                 })
         },
+
+        // Таблица Состав партии (BatchItems)
+        new TableDefinition
+        {
+            DisplayName = "Состав партии",
+            DbName = "BatchItems",
+            TableType = typeof(BatchItem),
+            Columns = new List<TableColumnInfo>
+            {
+                new("Номер товара в партии", "BatchItemId", isId: true, isEditable: false),
+                new("Номер партии", "BatchId", referenceTable: "Batches", referenceIdColumn: nameof(Batch.BatchId), foreignKeyProperty: "BiBatchId"),
+                new("Номер ячейки", "CellName", referenceTable: "StorageCells", referenceIdColumn: "CellId", foreignKeyProperty: "BiCellId"),
+                new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "BiProductId"),
+                new("Количество", "BatchItemQuantity"),
+                new("Остаток", "RemainingItem")
+            },
+            QueryBuilder = db => db.BatchItems
+                .Include(bi => bi.BiBatch)
+                .Include(bi => bi.BiProduct)
+                .Include(bi => bi.BiCell)
+                .Select(bi => new
+                {
+                    bi.BatchItemId,
+                    bi.BiCell.CellName,
+                    bi.BiBatch.BatchId,
+                    bi.BiBatchId,
+                    bi.BiProduct.ProductName,
+                    bi.BatchItemQuantity,
+                    bi.RemainingItem,
+                    bi.BiProductId,
+                    bi.BiCellId
+                })
+        },
+        // Таблица Ячейки склада (StorageCells)
+        new TableDefinition
+        {
+            DisplayName = "Ячейки склада",
+            DbName = "StorageCells",
+            TableType = typeof(StorageCell),
+            Columns = new List<TableColumnInfo>
+            {
+                new("ID", "CellId", isId: true, isVisible: false),
+                new("Название", "CellName"),
+                new("Описание", "LocationDescription"),
+                new("Ширина", "Width"),
+                new("Глубина", "Depth"),
+                new("Высота", "Height"),
+                new("Макс. вес", "MaxWeight")
+            },
+            QueryBuilder = db => db.StorageCells
+                .Select(sc => new
+                {
+                    sc.CellId,
+                    sc.CellName,
+                    sc.LocationDescription,
+                    sc.Width,
+                    sc.Depth,
+                    sc.Height,
+                    sc.MaxWeight
+                })
+        },
+
+        // Таблица Продажи (Sales)
+        new TableDefinition
+        {
+            DisplayName = "Продажи",
+            DbName = "Sales",
+            TableType = typeof(Sale),
+            Columns = new List<TableColumnInfo>
+            {
+                new("Номер продажи", "SaleId", isId: true, isEditable: false),
+                new("Номер заказа клиента", "CustomerOrderId", referenceTable: "CustomerOrders", referenceIdColumn: "CustomerOrderId", foreignKeyProperty: "SaleCustomerOrderId"),
+                new("Клиент", "CustomerSurname", referenceTable: "Customers", referenceIdColumn: "CustomerId", foreignKeyProperty: "SaleCustomerId"),
+                new("Сотрудник", "EmployeeSurname", referenceTable: "Employees", referenceIdColumn: "EmployeeId", foreignKeyProperty: "SaleEmployeeId"),
+                new("Дата продажи", "SaleDate"),
+                new("Количество товаров", "SaleQuantity", isVisibleInEdit: false),
+                new("Сумма", "SaleTotalAmount", isVisibleInEdit: false),
+            },
+            QueryBuilder = db => db.Sales
+                .Include(s => s.SaleCustomerOrder)
+                .Include(s => s.SaleCustomer)
+                .Include(s => s.SaleEmployee)
+                .Include(s => s.SaleItems)
+                    .ThenInclude(si => si.SiBatchItem)
+                    .ThenInclude(bi => bi.BiProduct)
+                .Select(s => new
+                {
+                    s.SaleId,
+                    CustomerOrderId = s.SaleCustomerOrder != null ? (int?)s.SaleCustomerOrder.CustomerOrderId : null,
+                    CustomerSurname = s.SaleCustomer.CustomerSurname + " " + s.SaleCustomer.CustomerName + " " + s.SaleCustomer.CustomerPatronymic,
+                    EmployeeSurname = s.SaleEmployee.EmployeeSurname + " " + s.SaleEmployee.EmployeeName + " " + s.SaleEmployee.EmployeePatronymic,
+                    s.SaleDate,
+                    SaleQuantity = s.SaleItems.Sum(si => si.SiQuantity),
+                    SaleTotalAmount = s.SaleItems.Sum(si => si.SiQuantity * si.SiBatchItem.BiProduct.ProductSalePrice),
+                })
+        },
+
+        // Таблица Состав продажи (SaleItems)
+        new TableDefinition
+        {
+            DisplayName = "Состав продажи",
+            DbName = "SaleItems",
+            TableType = typeof(SaleItem),
+            Columns = new List<TableColumnInfo>
+            {
+                new("Номер продажи", "SaleId",  referenceTable: "Sales", referenceIdColumn: "SaleId", foreignKeyProperty: "SiSaleId"),
+                new("Номер товара в продаже", "SaleItemId", isId: true, isEditable: false),
+                new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "SiProductId"),
+                new("Количество", "SiQuantity")
+            },
+            QueryBuilder = db => db.SaleItems
+                .Include(si => si.SiSale)
+                .Include(si => si.SiBatchItem)
+                .ThenInclude(bi => bi.BiProduct)
+                .Select(si => new
+                {
+                    si.SaleItemId,
+                    si.SiSaleId,
+                    si.SiSale.SaleId,
+                    si.SiBatchItem.BiProduct.ProductName,
+                    si.SiQuantity,
+                    ProductPrice = si.SiBatchItem.BiProduct.ProductSalePrice
+                })
+        },
+
+        // Таблица Клиенты (Customers)
+        new TableDefinition
+        {
+            DisplayName = "Клиенты",
+            DbName = "Customers",
+            TableType = typeof(Customer),
+            Columns = new List<TableColumnInfo>
+            {
+                new("ID", "CustomerId", isId: true, isVisible: false),
+                new("Имя", "CustomerName"),
+                new("Фамилия", "CustomerSurname"),
+                new("Отчество", "CustomerPatronymic"),
+                new("Телефон", "CustomerPhone"),
+                new("Email", "CustomerEmail")
+            },
+            QueryBuilder = db => db.Customers
+                .Select(c => new
+                {
+                    c.CustomerId,
+                    c.CustomerName,
+                    c.CustomerSurname,
+                    c.CustomerPatronymic,
+                    c.CustomerPhone,
+                    c.CustomerEmail
+                })
+        },
+
         // Таблица Заказы клиентов (CustomerOrders)
         new TableDefinition()
         {
@@ -611,6 +487,164 @@ public class AutoPartsStoreTables
                     CustomerSurname = coi.CoiCustomerOrder.CoCustomer.CustomerName + " "
                     + coi.CoiCustomerOrder.CoCustomer.CustomerSurname + " "
                     + coi.CoiCustomerOrder.CoCustomer.CustomerPatronymic,
+                })
+        },
+
+        // Таблица Должности (Positions)
+        new TableDefinition
+        {
+            DisplayName = "Должности",
+            DbName = "Positions",
+            TableType = typeof(Position),
+            Columns = new List<TableColumnInfo>
+            {
+                new("ID", "PositionId", isId: true, isVisible: false),
+                new("Название", "PositionName"),
+                new("Описание", "PositionDescription"),
+            },
+            QueryBuilder = db => db.Positions
+                .Select(p => new
+                {
+                    p.PositionId,
+                    p.PositionName,
+                    p.PositionDescription
+                })
+        },
+        // Таблица Сотрудники (Employees)
+        new TableDefinition
+        {
+            DisplayName = "Сотрудники",
+            DbName = "Employees",
+            TableType = typeof(Employee),
+            Columns = new List<TableColumnInfo>
+            {
+                new("ID", "EmployeeId", isId: true, isVisible: false),
+                new("Имя", "EmployeeName"),
+                new("Фамилия", "EmployeeSurname"),
+                new("Отчество", "EmployeePatronymic"),
+                new(
+                    displayName: "Должность",
+                    propertyName: "PositionName",
+                    referenceTable: "Positions",
+                    referenceIdColumn: "PositionId",
+                    foreignKeyProperty: "EmployeePositionId"
+                    ),
+                new("Телефон", "EmployeePhone"),
+                new("Email", "EmployeeEmail"),
+                new("Дата найма", "HireDate"),
+                new("Дата увольнения", "FireDate")
+            },
+            QueryBuilder = db => db.Employees
+                .Include(e => e.EmployeePosition)
+                .Select(e => new
+                {
+                    e.EmployeeId,
+                    e.EmployeeName,
+                    e.EmployeePosition.PositionName,
+                    e.EmployeeSurname,
+                    e.EmployeePatronymic,
+                    e.EmployeePositionId,
+                    e.EmployeePhone,
+                    e.EmployeeEmail,
+                    e.HireDate,
+                    e.FireDate
+                })
+        },
+
+        // Таблица Брак (Defects)
+        new TableDefinition
+        {
+            DisplayName = "Брак",
+            DbName = "Defects",
+            TableType = typeof(Defect),
+            Columns = new List<TableColumnInfo>
+            {
+                new("Номер брака", "DefectId", isId: true, isEditable: false),
+                new("Номер товара в партии", "BatchItemId", referenceTable: "BatchItems", referenceIdColumn: "BatchItemId", foreignKeyProperty: "DefectBatchItemId"),
+                new("Товар", "ProductName", referenceTable: "Products", referenceIdColumn: "ProductId", foreignKeyProperty: "DefectBatchItemId", isVisibleInEdit: false),
+                new("Количество", "DefectQuantity"),
+                new("Дата обнаружения", "DetectionDate"),
+                new("Описание", "DefectDescription")
+            },
+            QueryBuilder = db => db.Defects
+                .Include(d => d.DefectBatchItem)
+                .ThenInclude(bi => bi.BiProduct)
+                .Select(d => new
+                {
+                    d.DefectId,
+                    d.DefectBatchItem.BatchItemId,
+                    d.DefectBatchItem.BiProduct.ProductName,
+                    d.DefectQuantity,
+                    d.DetectionDate,
+                    d.DefectDescription
+                })
+        },
+
+        // Таблица Возврат поставщикам (SupplierReturns) +
+        new TableDefinition
+        {
+            DisplayName = "Возврат поставщикам",
+            DbName = "SupplierReturns",
+            TableType = typeof(SupplierReturn),
+            Columns = new List<TableColumnInfo>
+            {
+                new("ID", "SupplierReturnId", isId: true, isVisible: false),
+                new("Номер брака", "DefectId", referenceTable: "Defects", referenceIdColumn: "DefectId", foreignKeyProperty: "SrDefectId"),
+                new("Номер товара в партии", "BatchItemId", referenceTable: "BatchItems", referenceIdColumn: "BatchItemId", foreignKeyProperty: "SrBatchItemId", isVisibleInEdit: false),
+                new("Товар", "ProductName", isVisibleInEdit: false),
+                new("Дата возврата", "ReturnDate"),
+                new("Сумма компенсации", "CompensationAmount"),
+                new("Замена товара", "ReplacementCompensation"),
+            },
+            QueryBuilder = db => db.SupplierReturns
+                .Include(sr => sr.SrDefect)
+                    .ThenInclude(d => d.DefectBatchItem)
+                    .ThenInclude(bi => bi.BiProduct)
+                .Select(sr => new
+                {
+                    sr.SupplierReturnId,
+                    sr.SrDefect.DefectBatchItem.BatchItemId,
+                    sr.SrDefect.DefectId,
+                    sr.ReturnDate,
+                    sr.SrDefect.DefectBatchItem.BiProduct.ProductName,
+                    sr.CompensationAmount,
+                    sr.ReplacementCompensation,
+                })
+        },
+
+        // Таблица Возвраты клиентов (CustomerRefunds)
+        new TableDefinition
+        {
+            DisplayName = "Возвраты клиентов",
+            DbName = "CustomerRefunds",
+            TableType = typeof(CustomerRefund),
+            Columns = new List<TableColumnInfo>
+            {
+                new("ID", "CustomerRefundId", isId: true, isVisible: false),
+                new("Товар", "ProductName", isVisibleInEdit: false),
+                new("Номер товара в продаже", "SaleItemId",
+                    referenceTable: "SaleItems",
+                    referenceIdColumn: "SaleItemId",
+                    foreignKeyProperty: "CrSaleItemId"),
+                new("Количество", "CrQuantity"),
+                new("Дата возврата", "RefundDate"),
+                new("Сумма возврата", "RefundAmount"),
+                new("Бракованный", "IsDefect"),
+            },
+            QueryBuilder = db => db.CustomerRefunds
+                .Include(cr => cr.CrSaleItem)
+                .ThenInclude(si => si.SiBatchItem)
+                .ThenInclude(bi => bi.BiProduct)
+                .Select(cr => new
+                {
+                    cr.CustomerRefundId,
+                    cr.CrSaleItem.SaleItemId,
+                    cr.CrSaleItem.SiBatchItem.BatchItemId,
+                    cr.CrSaleItem.SiBatchItem.BiProduct.ProductName,
+                    cr.CrQuantity,
+                    cr.RefundDate,
+                    cr.RefundAmount,
+                    cr.IsDefect
                 })
         },
         // Таблица Таможенные платежи (CustomPayments)
@@ -684,12 +718,28 @@ public class AutoPartsStoreTables
 
                 var query = definition.QueryBuilder(db).AsQueryable();
                 var parameter = Expression.Parameter(query.ElementType, "x");
-
                 var property = Expression.Property(parameter, columnInfo.PropertyName);
+                Expression containsCall;
 
-                var toStringCall = Expression.Call(property, "ToString", null, null);
-                var containsMethod = typeof(string).GetMethod("Contains", new[] { typeof(string) });
-                var containsCall = Expression.Call(toStringCall, containsMethod, Expression.Constant(searchValue));
+                if (IsNumericType(property.Type))
+                {
+                    try
+                    {
+                        object convertedSearchValue = Convert.ChangeType(searchValue, property.Type);
+                        var equalsMethod = typeof(object).GetMethod("Equals", new[] { typeof(object) });
+                        containsCall = Expression.Equal(property, Expression.Constant(convertedSearchValue));
+                    }
+                    catch (FormatException)
+                    {
+                        return new List<object>();
+                    }
+                }
+                else
+                {
+                    var toStringCall = Expression.Call(property, "ToString", null, null);
+                    var containsMethod = typeof(string).GetMethod("Contains", new[] { typeof(string) });
+                    containsCall = Expression.Call(toStringCall, containsMethod, Expression.Constant(searchValue));
+                }
 
                 var lambda = Expression.Lambda(containsCall, parameter);
 
@@ -708,6 +758,14 @@ public class AutoPartsStoreTables
         {
             _asyncLock.Release();
         }
+    }
+
+    private static bool IsNumericType(Type type)
+    {
+        return type == typeof(int) || type == typeof(int?) ||
+               type == typeof(decimal) || type == typeof(decimal?) ||
+               type == typeof(double) || type == typeof(double?) ||
+               type == typeof(float) || type == typeof(float?);
     }
 
     public async Task DeleteTableItemAsync(string tableDisplayName, object selectedItem)

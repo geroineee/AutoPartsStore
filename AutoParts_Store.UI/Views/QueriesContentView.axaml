@@ -3,30 +3,48 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-			 xmlns:vm="using:AutoParts_Store.UI.ViewModels"
-			 x:DataType="vm:QueriesContentViewModel"
+             xmlns:vm="using:AutoParts_Store.UI.ViewModels"
+             x:DataType="vm:QueriesContentViewModel"
              x:Class="AutoParts_Store.UI.Views.QueriesContentView">
 
-	
 	<StackPanel>
 		<ProgressBar IsIndeterminate="True"
                      Height="4"
                      Margin="8,0"
                      IsVisible="{Binding IsLoading}"/>
-		
-		<Button Content="Запрос 1" Command="{Binding LoadData}" CommandParameter="1"/>
-		<Button Content="Запрос 2" Command="{Binding LoadData}" CommandParameter="2"/>
-		
+
+		<ComboBox ItemsSource="{Binding QueryDefinitions}"
+                  SelectedItem="{Binding SelectedQuery}"
+                  DisplayMemberBinding="{Binding DisplayName}"
+                  PlaceholderText="Выберите запрос..."
+                  Margin="8"/>
+
+		<ComboBox ItemsSource="{Binding Variations}"
+                  SelectedItem="{Binding SelectedVariation}"
+                  DisplayMemberBinding="{Binding DisplayName}"
+                  PlaceholderText="Выберите вариацию..."
+                  Margin="8"/>
+
+		<StackPanel Orientation="Vertical" Margin="8">
+			<ItemsControl ItemsSource="{Binding InputControls}">
+				<ItemsControl.ItemTemplate>
+					<DataTemplate>
+						<ContentControl Content="{Binding .}" />
+					</DataTemplate>
+				</ItemsControl.ItemTemplate>
+			</ItemsControl>
+		</StackPanel>
+
+		<Button Content="Выполнить запрос" Command="{Binding ExecuteQuery}" Margin="8"/>
+
 		<DataGrid Margin="8"
-				  CanUserResizeColumns="True"
-				  CanUserReorderColumns="True"
-				  ItemsSource="{Binding Data}"
+                  CanUserResizeColumns="True"
+                  CanUserReorderColumns="True"
+                  ItemsSource="{Binding Data}"
                   AutoGenerateColumns="True"
                   Height="400"
                   IsReadOnly="True"
-				  BorderThickness="1"
-				  BorderBrush="Gray">
-		</DataGrid>
+                  BorderThickness="1"
+                  BorderBrush="Gray"/>
 	</StackPanel>
-	
 </UserControl>

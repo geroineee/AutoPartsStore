@@ -20,8 +20,6 @@ public partial class Supplier
 
     public bool? IsActive { get; set; }
 
-    public virtual ICollection<Batch> Batches { get; set; } = new List<Batch>();
-
     public virtual ICollection<DeliveryTerm> DeliveryTerms { get; set; } = new List<DeliveryTerm>();
 
     public virtual SupplierCategory SupplierCategory { get; set; } = null!;

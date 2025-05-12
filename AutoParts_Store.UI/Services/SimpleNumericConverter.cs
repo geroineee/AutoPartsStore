@@ -7,15 +7,25 @@ namespace AutoParts_Store.UI.ViewModels
     public class SimpleNumericConverter : IValueConverter
     {
         private readonly Type _targetType;
+        private readonly string _formatString;
 
-        public SimpleNumericConverter(Type targetType)
+        public SimpleNumericConverter(Type targetType, string formatString = null)
         {
             _targetType = targetType;
+            _formatString = formatString ?? "N2"; // Default to "N2" if no format string is provided
         }
 
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            // Преобразование значения в строку
+            // Преобразование значения в строку с заданным форматом
+            if (value is decimal || value is decimal?)
+            {
+                return ((decimal)value).ToString(_formatString, culture);
+            }
+            else if (value is float || value is float?)
+            {
+                return ((float)value).ToString(_formatString, culture);
+            }
             return value?.ToString();
         }
 

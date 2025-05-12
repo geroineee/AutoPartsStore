@@ -22,6 +22,8 @@ public partial class SupplierOrder
 
     public bool SupplierOrderStatus { get; set; }
 
+    public virtual ICollection<Batch> Batches { get; set; } = new List<Batch>();
+
     public virtual Employee Manager { get; set; } = null!;
 
     public virtual Supplier Recipient { get; set; } = null!;

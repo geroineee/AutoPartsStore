@@ -77,19 +77,6 @@ public partial class AutopartsStoreContext : DbContext
             entity
                 .HasNoKey()
                 .ToView("available_product_on_storage_view");
-
-            entity.Property(e => e.BatchId).HasColumnName("batch_id");
-            entity.Property(e => e.BatchItemId).HasColumnName("batch_item_id");
-            entity.Property(e => e.CellId).HasColumnName("cell_id");
-            entity.Property(e => e.CellName)
-                .HasMaxLength(10)
-                .HasColumnName("cell_name");
-            entity.Property(e => e.CurrentQuantity).HasColumnName("current_quantity");
-            entity.Property(e => e.ProductId).HasColumnName("product_id");
-            entity.Property(e => e.ProductName)
-                .HasMaxLength(100)
-                .HasColumnName("product_name");
-            entity.Property(e => e.QuantityInCell).HasColumnName("quantity_in_cell");
         });
 
         modelBuilder.Entity<Batch>(entity =>
@@ -98,22 +85,22 @@ public partial class AutopartsStoreContext : DbContext
 
             entity.ToTable("batch", tb => tb.HasComment("Партия"));
 
-            entity.HasIndex(e => e.BatchSupplierId, "batch_supplier_id");
+            entity.HasIndex(e => e.BatchSupplierOrderId, "fk_batch_supplier_order");
 
             entity.Property(e => e.BatchId).HasColumnName("batch_id");
             entity.Property(e => e.BatchDescription)
                 .HasColumnType("text")
                 .HasColumnName("batch_description");
-            entity.Property(e => e.BatchSupplierId).HasColumnName("batch_supplier_id");
+            entity.Property(e => e.BatchSupplierOrderId).HasColumnName("batch_supplier_order_id");
             entity.Property(e => e.DeliveryDate)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp")
                 .HasColumnName("delivery_date");
 
-            entity.HasOne(d => d.BatchSupplier).WithMany(p => p.Batches)
-                .HasForeignKey(d => d.BatchSupplierId)
+            entity.HasOne(d => d.BatchSupplierOrder).WithMany(p => p.Batches)
+                .HasForeignKey(d => d.BatchSupplierOrderId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("batch_ibfk_1");
+                .HasConstraintName("fk_batch_supplier_order");
         });
 
         modelBuilder.Entity<BatchInfoView>(entity =>
@@ -370,19 +357,6 @@ public partial class AutopartsStoreContext : DbContext
             entity
                 .HasNoKey()
                 .ToView("defective_item_view");
-
-            entity.Property(e => e.BatchDeliveryDate)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("timestamp")
-                .HasColumnName("batch_delivery_date");
-            entity.Property(e => e.DefectId).HasColumnName("defect_id");
-            entity.Property(e => e.DefectQuantity).HasColumnName("defect_quantity");
-            entity.Property(e => e.ProductName)
-                .HasMaxLength(100)
-                .HasColumnName("product_name");
-            entity.Property(e => e.SupplierName)
-                .HasMaxLength(100)
-                .HasColumnName("supplier_name");
         });
 
         modelBuilder.Entity<DeliveryTerm>(entity =>
