@@ -27,10 +27,10 @@
 					  Margin="8"/>
 		</StackPanel>
 
-		<ItemsControl ItemsSource="{Binding QueriesControls}" HorizontalAlignment="Center" MinWidth="500">
+		<ItemsControl ItemsSource="{Binding QueriesControls}" HorizontalAlignment="Center" Width="800">
 				<ItemsControl.ItemTemplate>
 					<DataTemplate>
-						<ContentControl Content="{Binding}" Margin="0,5"/>
+						<ContentControl Content="{Binding}" Margin="5"/>
 					</DataTemplate>
 				</ItemsControl.ItemTemplate>
 		</ItemsControl>

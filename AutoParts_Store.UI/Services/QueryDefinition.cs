@@ -27,13 +27,16 @@ namespace AutoParts_Store.UI.Services
         public string PropertyName { get; set; } // Имя свойства, в которое нужно сохранить значение
         public Type ParameterType { get; set; } // Тип параметра (int, DateTime, string и т.д.)
         public QueryParameterType InputType { get; set; } //Тип контрола для ввода
-        public string? ReferenceTable { get; set; } //Если это ComboBox, то какая таблица является источником данных
+        public string? SourceTable { get; set; } // Table name for ComboBox data source
+        public string? DisplayMember { get; set; } // Property to display in ComboBox
+        public string? ValueMember { get; set; } // Property to use as the value
     }
 
     public enum QueryParameterType
     {
         TextBox,
         ComboBox,
-        DatePicker
+        DatePicker,
+        NumericUpDown
     }
 }

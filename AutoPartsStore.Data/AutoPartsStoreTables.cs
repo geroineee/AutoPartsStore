@@ -693,7 +693,8 @@ public class AutoPartsStoreTables
                 var definition = TableDefinitions.FirstOrDefault(t => t.DisplayName == tableName)
                     ?? throw new ArgumentException("Unknown table");
 
-                return await definition.QueryBuilder(db).ToListAsync();
+                var res = await definition.QueryBuilder(db).ToListAsync();
+                return res;
             }
         }
         finally

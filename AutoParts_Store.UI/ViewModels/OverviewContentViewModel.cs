@@ -287,7 +287,7 @@ namespace AutoParts_Store.UI.ViewModels
             }
             catch (Exception ex)
             {
-                _currentNotification = CreateNotification("Ошибка", $"Ошибка удаления записи: запись используется в других таблицах", NotificationManager, _currentNotification);
+                _currentNotification = CreateNotification("Ошибка", $"{ex.InnerException.Message}", NotificationManager, _currentNotification);
             }
             finally
             {

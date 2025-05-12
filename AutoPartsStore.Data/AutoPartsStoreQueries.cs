@@ -20,7 +20,7 @@ namespace AutoPartsStore.Data
         /// <summary>
         /// Запрос 1) Получите перечень и общее число поставщиков определенной категории, поставляющих указанный вид товара.
         /// </summary>
-        public async Task<List<object>> GetSupplierProvidesProductAsync(int supplierCategory, int productId)
+        public async Task<List<object>> GetSupplierProvidesProductAsync(int productId, int supplierCategory)
         {
             using (var _db = _dbContextFactory())
             {

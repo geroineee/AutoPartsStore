@@ -7,6 +7,10 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using System.Linq;
 using AutoParts_Store.UI.Services;
+using Avalonia.Controls.Templates;
+using Avalonia;
+using Avalonia.Data;
+using Avalonia.Media;
 
 namespace AutoParts_Store.UI.ViewModels
 {
@@ -20,11 +24,19 @@ namespace AutoParts_Store.UI.ViewModels
         private QueryDefinition? _selectedQueryDefinition;
         private Dictionary<string, object> _parameterValues = new Dictionary<string, object>();
 
+        private ObservableCollection<ParameterViewModel> _parameters = [];
+
         public ObservableCollection<object> Data
         {
             get => _data;
             set => this.RaiseAndSetIfChanged(ref _data, value);
         }
+        public ObservableCollection<ParameterViewModel> Parameters
+        {
+            get => _parameters;
+            set => this.RaiseAndSetIfChanged(ref _parameters, value);
+        }
+
 
         public bool IsLoading
         {
@@ -71,69 +83,260 @@ namespace AutoParts_Store.UI.ViewModels
         {
             QueryDefinitions = new ObservableCollection<QueryDefinition>();
             LoadQueryDefinitions();
-            if (QueryDefinitions.Any())
-            {
-                SelectedQueryDefinition = QueryDefinitions.First();
-            }
         }
 
-        private void CreateQueryControls(QueryVariation? queryVariation)
+        private async void CreateQueryControls(QueryVariation? queryVariation)
         {
             QueriesControls.Clear();
             _parameterValues.Clear();
 
             if (queryVariation == null) return;
 
+            List<Task<Control>> controlCreationTasks = new List<Task<Control>>();
+
             foreach (var parameter in queryVariation.Parameters)
             {
-                Control control = parameter.InputType switch
+                Task<Control> controlCreationTask = parameter.InputType switch
                 {
-                    QueryParameterType.TextBox => CreateTextBox(parameter),
-                    QueryParameterType.DatePicker => CreateDatePicker(parameter),
+                    QueryParameterType.TextBox => Task.FromResult(CreateTextBox(parameter)),
+                    QueryParameterType.DatePicker => Task.FromResult(CreateDatePicker(parameter)),
                     QueryParameterType.ComboBox => CreateComboBox(parameter),
+                    QueryParameterType.NumericUpDown => Task.FromResult(CreateNumericUpDown(parameter)),
                     _ => throw new ArgumentOutOfRangeException($"Unsupported input type: {parameter.InputType}")
                 };
+                controlCreationTasks.Add(controlCreationTask);
+            }
+
+            var controls = await Task.WhenAll(controlCreationTasks);
+
+            foreach (var control in controls)
+            {
                 QueriesControls.Add(control);
             }
         }
 
+        private Control CreateNumericUpDown(QueryParameter parameter)
+        {
+            // Текстовая метка
+            var label = new TextBlock
+            {
+                Text = parameter.DisplayName,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 10, 0),
+                FontWeight = FontWeight.Bold
+            };
+
+            // NumericUpDown контрол
+            var numericUpDown = new NumericUpDown
+            {
+                Width = 200,
+                Margin = new Thickness(0, 0, 10, 0),
+                Minimum = 0,
+                Maximum = int.MaxValue,
+                FormatString = "0", // Исправленный формат (убрали "D")
+                AllowSpin = true,
+                ShowButtonSpinner = true
+            };
+
+            // Установка корректного типа значения
+            if (parameter.ParameterType == typeof(decimal) ||
+                parameter.ParameterType == typeof(double) ||
+                parameter.ParameterType == typeof(float))
+            {
+                numericUpDown.FormatString = "0.00"; // Формат для дробных чисел
+            }
+
+            // Кнопка очистки
+            var clearButton = new Button
+            {
+                Content = "Очистить",
+                Width = 80,
+                Command = ReactiveCommand.Create(() =>
+                {
+                    numericUpDown.Value = null;
+                    _parameterValues[parameter.PropertyName] = null;
+                })
+            };
+
+            numericUpDown.ValueChanged += (sender, e) =>
+            {
+                try
+                {
+                    if (numericUpDown.Value.HasValue)
+                    {
+                        // Конвертируем в нужный тип
+                        _parameterValues[parameter.PropertyName] =
+                            Convert.ChangeType(numericUpDown.Value.Value, parameter.ParameterType);
+                    }
+                    else
+                    {
+                        _parameterValues[parameter.PropertyName] = null;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Ошибка преобразования числа: {ex.Message}");
+                    _parameterValues[parameter.PropertyName] = null;
+                }
+            };
+
+            var panel = new StackPanel
+            {
+                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                Margin = new Thickness(0, 5),
+                Spacing = 10
+            };
+
+            panel.Children.Add(label);
+            panel.Children.Add(numericUpDown);
+            panel.Children.Add(clearButton);
+
+            return panel;
+        }
+
         private Control CreateTextBox(QueryParameter parameter)
         {
-            var textBox = new TextBox { Watermark = parameter.DisplayName, Width = 200 };
+            var textBox = new TextBox
+            {
+                Watermark = parameter.DisplayName,
+                Width = 300,  // Увеличил ширину
+                Margin = new Thickness(0, 0, 0, 10)  // Добавил отступ снизу
+            };
+
             textBox.LostFocus += (sender, e) =>
             {
                 _parameterValues[parameter.PropertyName] = textBox.Text;
             };
 
-            var panel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
+            var panel = new StackPanel
+            {
+                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,  // Выравнивание по центру
+                Margin = new Thickness(0, 5)  // Вертикальные отступы
+            };
             panel.Children.Add(textBox);
-            panel.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch;
-            textBox.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left;
             return panel;
         }
 
         private Control CreateDatePicker(QueryParameter parameter)
         {
-            var datePicker = new DatePicker { Width = 400 };
+            // Текстовая метка с названием параметра
+            var label = new TextBlock
+            {
+                Text = parameter.DisplayName,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch,
+                Margin = new Thickness(0, 0, 10, 0),
+                FontWeight = FontWeight.Bold
+            };
+
+            // DatePicker
+            var datePicker = new DatePicker
+            {
+                Width = 300,
+                Margin = new Thickness(0, 0, 10, 0),
+                [!DatePicker.SelectedDateProperty] = new Binding("SelectedDate")
+                {
+                    Converter = new DateTimeToDateTimeOffsetConverter(),
+                    Mode = BindingMode.TwoWay
+                }
+            };
+
+            // Кнопка очистки
+            var clearButton = new Button
+            {
+                Content = "Очистить",
+                Width = 85,
+                Margin = new Thickness(0, 0, 0, 0),
+                Command = ReactiveCommand.Create(() =>
+                {
+                    datePicker.SelectedDate = null;
+                    _parameterValues[parameter.PropertyName] = null;
+                })
+            };
+
+            var viewModel = new DatePickerViewModel();
+            datePicker.DataContext = viewModel;
+
             datePicker.SelectedDateChanged += (sender, e) =>
             {
-                _parameterValues[parameter.PropertyName] = datePicker.SelectedDate;
+                _parameterValues[parameter.PropertyName] = datePicker.SelectedDate.HasValue
+                    ? datePicker.SelectedDate.Value.DateTime
+                    : null;
             };
-            var panel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
+
+            var panel = new StackPanel
+            {
+                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                Margin = new Thickness(0, 5),
+                Spacing = 10 // Расстояние между элементами
+            };
+
+            panel.Children.Add(label);
             panel.Children.Add(datePicker);
-            panel.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch;
-            datePicker.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left;
+            panel.Children.Add(clearButton);
+
             return panel;
         }
 
-        private Control CreateComboBox(QueryParameter parameter)
+        // Вспомогательный класс для привязки данных DatePicker
+        private class DatePickerViewModel : ReactiveObject
         {
-            var comboBox = new ComboBox { Width = 200 };
-            var panel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
+            private DateTimeOffset? _selectedDate;
+            public DateTimeOffset? SelectedDate
+            {
+                get => _selectedDate;
+                set => this.RaiseAndSetIfChanged(ref _selectedDate, value);
+            }
+        }
+
+        private async Task<Control> CreateComboBox(QueryParameter parameter)
+        {
+            var comboBox = new ComboBox
+            {
+                Width = 300,  // Увеличил ширину
+                Margin = new Thickness(0, 0, 0, 10),  // Добавил отступ снизу
+                PlaceholderText = parameter.DisplayName,
+                HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Left
+            };
+
+            if (parameter.SourceTable != null && parameter.DisplayMember != null && parameter.ValueMember != null)
+            {
+                var tableDisplayName = AutoPartsStoreTables.TableDefinitions
+                    .First(t => t.DbName == parameter.SourceTable).DisplayName;
+
+                var data = await _tablesService.GetTableDataAsync(tableDisplayName);
+
+                comboBox.ItemsSource = data;
+                comboBox.ItemTemplate = new FuncDataTemplate<object>((item, scope) =>
+                {
+                    var textBlock = new TextBlock
+                    {
+                        Margin = new Thickness(5),  // Отступы внутри элемента
+                        Text = item?.GetType().GetProperty(parameter.DisplayMember)?.GetValue(item)?.ToString()
+                    };
+                    return textBlock;
+                });
+
+                comboBox.SelectionChanged += (sender, e) =>
+                {
+                    _parameterValues[parameter.PropertyName] = comboBox.SelectedItem != null
+                        ? comboBox.SelectedItem.GetType().GetProperty(parameter.ValueMember)?.GetValue(comboBox.SelectedItem)
+                        : null;
+                };
+            }
+
+            var panel = new StackPanel
+            {
+                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                Margin = new Thickness(0, 5)
+            };
             panel.Children.Add(comboBox);
-            panel.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch;
-            comboBox.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left;
-            return comboBox;
+            return panel;
         }
 
         public async Task ExecuteQuery()
@@ -142,12 +345,67 @@ namespace AutoParts_Store.UI.ViewModels
 
             try
             {
-                var parameters = SelectedQueryVariation.Parameters.Select(p => _parameterValues.ContainsKey(p.PropertyName) ? _parameterValues[p.PropertyName] : null).ToArray();
-                Data = new ObservableCollection<object>((List<object>)await SelectedQueryVariation.ExecutionFunction(parameters));
+                // Создаем массив параметров в том же порядке, как определено в QueryVariation.Parameters
+                var parameters = new object[SelectedQueryVariation.Parameters.Count];
+
+                for (int i = 0; i < SelectedQueryVariation.Parameters.Count; i++)
+                {
+                    var paramDef = SelectedQueryVariation.Parameters[i];
+
+                    // Получаем значение параметра из словаря
+                    if (!_parameterValues.TryGetValue(paramDef.PropertyName, out var paramValue))
+                    {
+                        parameters[i] = null;
+                        continue;
+                    }
+
+                    // Обработка числовых значений
+                    if (paramDef.InputType == QueryParameterType.NumericUpDown && paramValue != null)
+                    {
+                        parameters[i] = Convert.ChangeType(paramValue, paramDef.ParameterType);
+                    }
+
+                    // Преобразование типов для ComboBox
+                    if (paramDef.InputType == QueryParameterType.ComboBox && paramValue != null)
+                    {
+                        parameters[i] = ConvertParameterType(paramValue, paramDef.ParameterType);
+                    }
+
+                    // Преобразование для DateTime
+                    else if (paramDef.ParameterType == typeof(DateTime)
+                             && paramValue is string dateString
+                             && DateTime.TryParse(dateString, out var date))
+                    {
+                        parameters[i] = date;
+                    }
+                    else
+                    {
+                        parameters[i] = paramValue;
+                    }
+                }
+
+                // Выполняем запрос с корректно упорядоченными параметрами
+                var query = await SelectedQueryVariation.ExecutionFunction(parameters);
+                Data = new ObservableCollection<object>(query);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Ошибка выполнения запроса: {ex.Message}");
+            }
+        }
+
+        private object ConvertParameterType(object value, Type targetType)
+        {
+            try
+            {
+                if (targetType == typeof(int)) return Convert.ToInt32(value);
+                if (targetType == typeof(decimal)) return Convert.ToDecimal(value);
+                if (targetType == typeof(DateTime)) return Convert.ToDateTime(value);
+                return value;
+            }
+            catch
+            {
+                return null; // или значение по умолчанию для типа
             }
         }
 
@@ -166,14 +424,32 @@ namespace AutoParts_Store.UI.ViewModels
                         Description = "Запрос поставщиков с фильтром по товару.",
                         ExecutionFunction = async (parameters) =>
                         {
-                            int productId = parameters[0] != null ? int.Parse(parameters[0].ToString()) : 0;
-                            int supplierCategory = parameters[1] != null ? int.Parse(parameters[1].ToString()) : 0;
-                            return (List<object>)await _queriesService.GetSupplierProvidesProductAsync(productId, supplierCategory);
+                            int productId = parameters[0] != null ? (int)parameters[0] : 0;
+                            int supplierCategory = parameters[1] != null ? (int)parameters[1] : 0;
+                            return await _queriesService.GetSupplierProvidesProductAsync(productId, supplierCategory);
                         },
                         Parameters = new List<QueryParameter>
                         {
-                            new QueryParameter { DisplayName = "ID товара", PropertyName = "ProductId", ParameterType = typeof(int), InputType = QueryParameterType.TextBox },
-                            new QueryParameter { DisplayName = "Категория поставщика", PropertyName = "SupplierCategory", ParameterType = typeof(int), InputType = QueryParameterType.TextBox }
+                            new QueryParameter
+                            {
+                                DisplayName = "Товар",
+                                PropertyName = "ProductId",
+                                ParameterType = typeof(int),
+                                InputType = QueryParameterType.ComboBox,
+                                SourceTable = "Products",
+                                DisplayMember = "ProductName",
+                                ValueMember = "ProductId"
+                            },
+                            new QueryParameter
+                            {
+                                DisplayName = "Категория поставщика",
+                                PropertyName = "SupplierCategory",
+                                ParameterType = typeof(int),
+                                InputType = QueryParameterType.ComboBox,
+                                SourceTable = "SupplierCategories",
+                                DisplayMember = "CategoryName",
+                                ValueMember = "CategoryId"
+                            }
                         }
                     },
                     new QueryVariation
@@ -182,50 +458,43 @@ namespace AutoParts_Store.UI.ViewModels
                         Description = "Запрос поставщиков с фильтром по объему поставки за период.",
                         ExecutionFunction = async (parameters) =>
                         {
-                            int productId = parameters[0] != null ? int.Parse(parameters[0].ToString()) : 0;
-                            int supplierCategory = parameters[1] != null ? int.Parse(parameters[1].ToString()) : 0;
+                            int productId = parameters[0] != null ? (int)parameters[0] : 0;
+                            int supplierCategory = parameters[1] != null ? (int)parameters[1] : 0;
                             int value = parameters[2] != null ? int.Parse(parameters[2].ToString()) : 0;
                             DateTime startDate = parameters[3] != null ? (DateTime)parameters[3] : DateTime.MinValue;
                             DateTime endDate = parameters[4] != null ? (DateTime)parameters[4] : DateTime.MaxValue;
 
-                            return (List<object>)await _queriesService.GetSupplierProvidesProductWithValueAsync(productId, supplierCategory, value, startDate, endDate);
+                            return await _queriesService.GetSupplierProvidesProductWithValueAsync(productId, supplierCategory, value, startDate, endDate);
                         },
                         Parameters = new List<QueryParameter>
                         {
-                            new QueryParameter { DisplayName = "ID товара", PropertyName = "ProductId", ParameterType = typeof(int), InputType = QueryParameterType.TextBox },
-                            new QueryParameter { DisplayName = "Категория поставщика", PropertyName = "SupplierCategory", ParameterType = typeof(int), InputType = QueryParameterType.TextBox },
-                            new QueryParameter { DisplayName = "Объем поставки", PropertyName = "Value", ParameterType = typeof(int), InputType = QueryParameterType.TextBox },
+                            new QueryParameter
+                            {
+                                DisplayName = "Товар",
+                                PropertyName = "ProductId",
+                                ParameterType = typeof(int),
+                                InputType = QueryParameterType.ComboBox,
+                                SourceTable = "Products",
+                                DisplayMember = "ProductName",
+                                ValueMember = "ProductId"
+                            },
+                            new QueryParameter
+                            {
+                                DisplayName = "Категория поставщика",
+                                PropertyName = "SupplierCategory",
+                                ParameterType = typeof(int),
+                                InputType = QueryParameterType.ComboBox,
+                                SourceTable = "SupplierCategories",
+                                DisplayMember = "CategoryName",
+                                ValueMember = "CategoryId"
+                            },
+                            new QueryParameter { DisplayName = "Объем поставки", PropertyName = "Value", ParameterType = typeof(int), InputType = QueryParameterType.NumericUpDown },
                             new QueryParameter { DisplayName = "Дата начала", PropertyName = "StartDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker },
                             new QueryParameter { DisplayName = "Дата окончания", PropertyName = "EndDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker }
                         }
                     }
                 }
             });
-        }
-
-        public async Task LoadData(int q = 0)
-        {
-            IsLoading = true;
-            try
-            {
-                List<Object>? query;
-
-                if (q == 1)
-                    query = await _queriesService.GetSupplierProvidesProductAsync(1, 1);
-                else
-                    query = await _queriesService.GetSupplierProvidesProductWithValueAsync(2, 1, 1,
-                new DateTime(2005, 1, 1), new DateTime(2030, 1, 1));
-
-                Data = new ObservableCollection<object>(query);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка загрузки: {ex.Message}");
-            }
-            finally
-            {
-                IsLoading = false;
-            }
         }
     }
 }

@@ -59,7 +59,7 @@ namespace AutoParts_Store.UI.ViewModels
         public void ShowMainContent()
         {
             // Метод для переключения на основной контент приложения после успешного входа в систему
-            ContentViewModel = new OverviewContentViewModel(); // Пример: Переключиться на обзор
+            ContentViewModel = _queriesVM; // Пример: Переключиться на обзор
             _isAuthenticated = true;
         }
 
