@@ -13,27 +13,27 @@
                      Margin="8,0"
                      IsVisible="{Binding IsLoading}"/>
 
-		<ComboBox ItemsSource="{Binding QueryDefinitions}"
-                  SelectedItem="{Binding SelectedQuery}"
+		<StackPanel Orientation="Horizontal">
+			<ComboBox ItemsSource="{Binding QueryDefinitions}"
+                  SelectedItem="{Binding SelectedQueryDefinition}"
                   DisplayMemberBinding="{Binding DisplayName}"
                   PlaceholderText="Выберите запрос..."
                   Margin="8"/>
 
-		<ComboBox ItemsSource="{Binding Variations}"
-                  SelectedItem="{Binding SelectedVariation}"
-                  DisplayMemberBinding="{Binding DisplayName}"
-                  PlaceholderText="Выберите вариацию..."
-                  Margin="8"/>
+			<ComboBox ItemsSource="{Binding SelectedQueryDefinition.Variations}"
+					  SelectedItem="{Binding SelectedQueryVariation}"
+					  DisplayMemberBinding="{Binding DisplayName}"
+					  PlaceholderText="Выберите вариацию..."
+					  Margin="8"/>
+		</StackPanel>
 
-		<StackPanel Orientation="Vertical" Margin="8">
-			<ItemsControl ItemsSource="{Binding InputControls}">
+		<ItemsControl ItemsSource="{Binding QueriesControls}" HorizontalAlignment="Center" MinWidth="500">
 				<ItemsControl.ItemTemplate>
 					<DataTemplate>
-						<ContentControl Content="{Binding .}" />
+						<ContentControl Content="{Binding}" Margin="0,5"/>
 					</DataTemplate>
 				</ItemsControl.ItemTemplate>
-			</ItemsControl>
-		</StackPanel>
+		</ItemsControl>
 
 		<Button Content="Выполнить запрос" Command="{Binding ExecuteQuery}" Margin="8"/>
 

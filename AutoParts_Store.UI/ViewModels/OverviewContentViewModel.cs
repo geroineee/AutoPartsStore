@@ -217,7 +217,6 @@ namespace AutoParts_Store.UI.ViewModels
 
                 if (propertyInfo != null && (propertyInfo.PropertyType == typeof(decimal) || propertyInfo.PropertyType == typeof(decimal?)))
                 {
-                    // Create a SimpleNumericConverter with the "N2" format
                     var converter = new SimpleNumericConverter(propertyInfo.PropertyType, "N2");
 
                     column = new DataGridTextColumn

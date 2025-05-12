@@ -36,5 +36,4 @@ namespace AutoParts_Store.UI.Services
         ComboBox,
         DatePicker
     }
-
 }

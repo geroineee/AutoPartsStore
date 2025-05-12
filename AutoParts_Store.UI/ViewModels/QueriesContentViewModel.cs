@@ -1,11 +1,12 @@
-﻿using AutoParts_Store.UI.Services;
-using AutoPartsStore.Data.Context;
-using Avalonia.Controls;
+﻿using AutoPartsStore.Data.Context;
 using ReactiveUI;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
+using Avalonia.Controls;
+using System.Linq;
+using AutoParts_Store.UI.Services;
 
 namespace AutoParts_Store.UI.ViewModels
 {
@@ -13,8 +14,11 @@ namespace AutoParts_Store.UI.ViewModels
     {
         private ObservableCollection<object> _data = [];
         private bool _isLoading;
-        private QueryDefinition? _selectedQuery; // Выбранный запрос
-        private QueryVariation? _selectedVariation; // Выбранная вариация
+        private ObservableCollection<Control> _queriesControls = [];
+        private QueryVariation? _selectedQueryVariation;
+        private ObservableCollection<QueryDefinition> _queryDefinitions = [];
+        private QueryDefinition? _selectedQueryDefinition;
+        private Dictionary<string, object> _parameterValues = new Dictionary<string, object>();
 
         public ObservableCollection<object> Data
         {
@@ -28,33 +32,123 @@ namespace AutoParts_Store.UI.ViewModels
             set => this.RaiseAndSetIfChanged(ref _isLoading, value);
         }
 
-        public ObservableCollection<QueryDefinition> QueryDefinitions { get; set; } = new ObservableCollection<QueryDefinition>(); // Список запросов
-
-        public QueryDefinition? SelectedQuery
+        public ObservableCollection<Control> QueriesControls
         {
-            get => _selectedQuery;
+            get => _queriesControls;
+            set => this.RaiseAndSetIfChanged(ref _queriesControls, value);
+        }
+
+        public ObservableCollection<QueryDefinition> QueryDefinitions
+        {
+            get => _queryDefinitions;
+            set => this.RaiseAndSetIfChanged(ref _queryDefinitions, value);
+        }
+
+        public QueryDefinition? SelectedQueryDefinition
+        {
+            get => _selectedQueryDefinition;
             set
             {
-                this.RaiseAndSetIfChanged(ref _selectedQuery, value);
-                SelectedVariation = null; // Сбрасываем выбранную вариацию при смене запроса
-                this.RaisePropertyChanged(nameof(Variations)); // Обновляем список вариаций
+                this.RaiseAndSetIfChanged(ref _selectedQueryDefinition, value);
+                if (value?.Variations != null && value.Variations.Any())
+                {
+                    SelectedQueryVariation = value.Variations.First();
+                }
             }
         }
 
-        public QueryVariation? SelectedVariation
+        public QueryVariation? SelectedQueryVariation
         {
-            get => _selectedVariation;
-            set => this.RaiseAndSetIfChanged(ref _selectedVariation, value);
+            get => _selectedQueryVariation;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _selectedQueryVariation, value);
+                CreateQueryControls(value);
+            }
         }
-        // Вариации для выбранного запроса
-        public IEnumerable<QueryVariation> Variations => SelectedQuery?.Variations ?? [];
-
-        //Список контролов для ввода параметров
-        public ObservableCollection<Control> InputControls { get; set; } = new ObservableCollection<Control>(); 
 
         public QueriesContentViewModel(Func<AutopartsStoreContext> dbContextFactory) : base(dbContextFactory)
         {
+            QueryDefinitions = new ObservableCollection<QueryDefinition>();
             LoadQueryDefinitions();
+            if (QueryDefinitions.Any())
+            {
+                SelectedQueryDefinition = QueryDefinitions.First();
+            }
+        }
+
+        private void CreateQueryControls(QueryVariation? queryVariation)
+        {
+            QueriesControls.Clear();
+            _parameterValues.Clear();
+
+            if (queryVariation == null) return;
+
+            foreach (var parameter in queryVariation.Parameters)
+            {
+                Control control = parameter.InputType switch
+                {
+                    QueryParameterType.TextBox => CreateTextBox(parameter),
+                    QueryParameterType.DatePicker => CreateDatePicker(parameter),
+                    QueryParameterType.ComboBox => CreateComboBox(parameter),
+                    _ => throw new ArgumentOutOfRangeException($"Unsupported input type: {parameter.InputType}")
+                };
+                QueriesControls.Add(control);
+            }
+        }
+
+        private Control CreateTextBox(QueryParameter parameter)
+        {
+            var textBox = new TextBox { Watermark = parameter.DisplayName, Width = 200 };
+            textBox.LostFocus += (sender, e) =>
+            {
+                _parameterValues[parameter.PropertyName] = textBox.Text;
+            };
+
+            var panel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
+            panel.Children.Add(textBox);
+            panel.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch;
+            textBox.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left;
+            return panel;
+        }
+
+        private Control CreateDatePicker(QueryParameter parameter)
+        {
+            var datePicker = new DatePicker { Width = 400 };
+            datePicker.SelectedDateChanged += (sender, e) =>
+            {
+                _parameterValues[parameter.PropertyName] = datePicker.SelectedDate;
+            };
+            var panel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
+            panel.Children.Add(datePicker);
+            panel.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch;
+            datePicker.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left;
+            return panel;
+        }
+
+        private Control CreateComboBox(QueryParameter parameter)
+        {
+            var comboBox = new ComboBox { Width = 200 };
+            var panel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
+            panel.Children.Add(comboBox);
+            panel.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch;
+            comboBox.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left;
+            return comboBox;
+        }
+
+        public async Task ExecuteQuery()
+        {
+            if (SelectedQueryVariation == null) return;
+
+            try
+            {
+                var parameters = SelectedQueryVariation.Parameters.Select(p => _parameterValues.ContainsKey(p.PropertyName) ? _parameterValues[p.PropertyName] : null).ToArray();
+                Data = new ObservableCollection<object>((List<object>)await SelectedQueryVariation.ExecutionFunction(parameters));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка выполнения запроса: {ex.Message}");
+            }
         }
 
         private void LoadQueryDefinitions()
@@ -65,114 +159,73 @@ namespace AutoParts_Store.UI.ViewModels
                 DisplayName = "Поставщики по категории и товару",
                 Description = "Получить перечень поставщиков определенной категории, поставляющих указанный вид товара.",
                 Variations = new List<QueryVariation>
-            {
-                new QueryVariation
                 {
-                    DisplayName = "С указанным товаром",
-                    Description = "Запрос поставщиков с фильтром по товару.",
-                    ExecutionFunction = async (parameters) =>
+                    new QueryVariation
                     {
-                        int productId = (int)parameters[0];
-                        int supplierCategory = (int)parameters[1];
-                        return (List<object>)await _queriesService.GetSupplierProvidesProductAsync(productId, supplierCategory);
+                        DisplayName = "С указанным товаром",
+                        Description = "Запрос поставщиков с фильтром по товару.",
+                        ExecutionFunction = async (parameters) =>
+                        {
+                            int productId = parameters[0] != null ? int.Parse(parameters[0].ToString()) : 0;
+                            int supplierCategory = parameters[1] != null ? int.Parse(parameters[1].ToString()) : 0;
+                            return (List<object>)await _queriesService.GetSupplierProvidesProductAsync(productId, supplierCategory);
+                        },
+                        Parameters = new List<QueryParameter>
+                        {
+                            new QueryParameter { DisplayName = "ID товара", PropertyName = "ProductId", ParameterType = typeof(int), InputType = QueryParameterType.TextBox },
+                            new QueryParameter { DisplayName = "Категория поставщика", PropertyName = "SupplierCategory", ParameterType = typeof(int), InputType = QueryParameterType.TextBox }
+                        }
                     },
-                    Parameters = new List<QueryParameter>
+                    new QueryVariation
                     {
-                         new QueryParameter { DisplayName = "ID товара", PropertyName = "ProductId", ParameterType = typeof(int), InputType = QueryParameterType.TextBox },
-                         new QueryParameter { DisplayName = "Категория поставщика", PropertyName = "SupplierCategory", ParameterType = typeof(int), InputType = QueryParameterType.TextBox }
-                    }
-                },
-                new QueryVariation
-                {
-                    DisplayName = "С указанным объемом за период",
-                    Description = "Запрос поставщиков с фильтром по объему поставки за период.",
-                    ExecutionFunction = async (parameters) =>
-                    {
-                        int productId = (int)parameters[0];
-                        int supplierCategory = (int)parameters[1];
-                        int value = (int)parameters[2];
-                        DateTime startDate = (DateTime)parameters[3];
-                        DateTime endDate = (DateTime)parameters[4];
+                        DisplayName = "С указанным объемом за период",
+                        Description = "Запрос поставщиков с фильтром по объему поставки за период.",
+                        ExecutionFunction = async (parameters) =>
+                        {
+                            int productId = parameters[0] != null ? int.Parse(parameters[0].ToString()) : 0;
+                            int supplierCategory = parameters[1] != null ? int.Parse(parameters[1].ToString()) : 0;
+                            int value = parameters[2] != null ? int.Parse(parameters[2].ToString()) : 0;
+                            DateTime startDate = parameters[3] != null ? (DateTime)parameters[3] : DateTime.MinValue;
+                            DateTime endDate = parameters[4] != null ? (DateTime)parameters[4] : DateTime.MaxValue;
 
-                        return (List<object>)await _queriesService.GetSupplierProvidesProductWithValueAsync(productId, supplierCategory, value, startDate, endDate);
-                    },
-                    Parameters = new List<QueryParameter>
-                    {
-                        new QueryParameter { DisplayName = "ID товара", PropertyName = "ProductId", ParameterType = typeof(int), InputType = QueryParameterType.TextBox },
-                        new QueryParameter { DisplayName = "Категория поставщика", PropertyName = "SupplierCategory", ParameterType = typeof(int), InputType = QueryParameterType.TextBox },
-                        new QueryParameter { DisplayName = "Объем поставки", PropertyName = "Value", ParameterType = typeof(int), InputType = QueryParameterType.TextBox },
-                        new QueryParameter { DisplayName = "Дата начала", PropertyName = "StartDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker },
-                        new QueryParameter { DisplayName = "Дата окончания", PropertyName = "EndDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker }
+                            return (List<object>)await _queriesService.GetSupplierProvidesProductWithValueAsync(productId, supplierCategory, value, startDate, endDate);
+                        },
+                        Parameters = new List<QueryParameter>
+                        {
+                            new QueryParameter { DisplayName = "ID товара", PropertyName = "ProductId", ParameterType = typeof(int), InputType = QueryParameterType.TextBox },
+                            new QueryParameter { DisplayName = "Категория поставщика", PropertyName = "SupplierCategory", ParameterType = typeof(int), InputType = QueryParameterType.TextBox },
+                            new QueryParameter { DisplayName = "Объем поставки", PropertyName = "Value", ParameterType = typeof(int), InputType = QueryParameterType.TextBox },
+                            new QueryParameter { DisplayName = "Дата начала", PropertyName = "StartDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker },
+                            new QueryParameter { DisplayName = "Дата окончания", PropertyName = "EndDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker }
+                        }
                     }
                 }
-            }
             });
-            // Добавьте остальные запросы аналогично
         }
 
-        public async Task ExecuteQuery()
+        public async Task LoadData(int q = 0)
         {
-            if (SelectedVariation == null) return;
-
             IsLoading = true;
             try
             {
-                // 1. Создать массив для параметров
-                object[] parameters = new object[SelectedVariation.Parameters.Count];
+                List<Object>? query;
 
-                // 2. Заполнить массив параметров данными из UI (предположим, что у вас есть TextBox'ы для ввода)
-                for (int i = 0; i < SelectedVariation.Parameters.Count; i++)
-                {
-                    //Тут нужно будет брать данные из UI, пока что заглушка
-                    if (SelectedVariation.Parameters[i].ParameterType == typeof(int))
-                    {
-                        parameters[i] = 1;
-                    }
-                    else if (SelectedVariation.Parameters[i].ParameterType == typeof(DateTime))
-                    {
-                        parameters[i] = DateTime.Now;
-                    }
-                }
+                if (q == 1)
+                    query = await _queriesService.GetSupplierProvidesProductAsync(1, 1);
+                else
+                    query = await _queriesService.GetSupplierProvidesProductWithValueAsync(2, 1, 1,
+                new DateTime(2005, 1, 1), new DateTime(2030, 1, 1));
 
-                //Выполнить запрос
-                Data = new ObservableCollection<object>(await SelectedVariation.ExecutionFunction(parameters));
+                Data = new ObservableCollection<object>(query);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Ошибка выполнения запроса: {ex.Message}");
+                Console.WriteLine($"Ошибка загрузки: {ex.Message}");
             }
             finally
             {
                 IsLoading = false;
             }
         }
-
-        public void UpdateInputControls()
-        {
-            InputControls.Clear();
-
-            if (SelectedVariation != null)
-            {
-                foreach (var parameter in SelectedVariation.Parameters)
-                {
-                    Control inputControl = CreateInputControl(parameter);
-                    InputControls.Add(inputControl);
-                }
-            }
-        }
-
-        private Control CreateInputControl(QueryParameter parameter)
-        {
-            Control control = parameter.InputType switch
-            {
-                QueryParameterType.TextBox => new TextBox { Watermark = parameter.DisplayName },
-                QueryParameterType.ComboBox => new ComboBox { PlaceholderText = parameter.DisplayName },
-                QueryParameterType.DatePicker => new DatePicker(),
-                _ => new TextBox { Watermark = "Неизвестный тип" }
-            };
-
-            return control;
-        }
     }
-
 }
