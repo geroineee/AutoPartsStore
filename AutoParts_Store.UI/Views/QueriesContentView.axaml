@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+			 xmlns:controls="clr-namespace:Avalonia.Notification.Controls;assembly=Notification.Avalonia"
              xmlns:vm="using:AutoParts_Store.UI.ViewModels"
              x:DataType="vm:QueriesContentViewModel"
              x:Class="AutoParts_Store.UI.Views.QueriesContentView">
@@ -46,6 +47,10 @@
                      Margin="8,0"
                      IsVisible="{Binding IsLoading}"/>
 
+		<Border>
+			<controls:NotificationMessageContainer Manager="{Binding NotificationManager}" />
+		</Border>
+		
 		<DataGrid Margin="8"
                   CanUserResizeColumns="True"
                   CanUserReorderColumns="True"

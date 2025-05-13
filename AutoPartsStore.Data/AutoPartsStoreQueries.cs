@@ -1,5 +1,6 @@
 ﻿using AutoPartsStore.Data.Context;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace AutoPartsStore.Data
@@ -167,63 +168,81 @@ namespace AutoPartsStore.Data
                 from si in db.SaleItems
                 join p in db.Products on si.SiProductId equals p.ProductId
                 group si by new { p.ProductId, p.ProductName } into g
-                orderby g.Sum(x => x.SiQuantity) ascending
+                orderby g.Sum(x => x.SiQuantity) descending
                 select new
                 {
                     Название_товара = g.Key.ProductName,
                     Объем_продаж = g.Sum(x => x.SiQuantity)
                 }
-            ).Take(10).ToListAsync<object>();
+            ).Take(10)
+            .ToListAsync<object>();
 
-            return result;
+            return result ?? new List<object>();
         }
 
         /// <summary>
         /// Запрос 5.2) Получите десять самых дешевых поставщиков для каждой детали.
         /// </summary>
-        public async Task<List<object>> GetCheapestSuppliersAsync()
+        public async Task<List<object>> GetCheapestSuppliersAsync(int productId)
         {
             using var db = _dbContextFactory();
 
             var result = await (
                 from view in db.SupplierProductStatViews
-                group view by view.ProductId into g
-                let minPrice = g.Min(x => x.DeliveryPrice)
+                where view.ProductId == productId
+                orderby view.DeliveryPrice ascending
                 select new
                 {
-                    Название_товара = g.First().ProductName,
-                    Поставщик = g.First(x => x.DeliveryPrice == minPrice).SupplierName,
-                    Цена = minPrice
+                    Поставщик = view.SupplierName,
+                    Цена = view.DeliveryPrice,
+                    Срок_поставки = view.DeliveryDays
                 }
-            ).Take(10).ToListAsync<object>();
+            ).Take(10)
+            .ToListAsync<object>();
 
-            return result;
+            return result ?? new List<object>();
         }
 
         /// <summary>
         /// Запрос 6) Получите среднее число продаж на месяц по выбранному виду деталей.
         /// </summary>
-        public async Task<object> GetAverageMonthlySalesAsync(int productId)
+        public async Task<List<object>> GetAverageMonthlySalesAsync(int productId)
         {
             using var db = _dbContextFactory();
 
-            var monthlySales = await (
-                from saleItem in db.SaleItems
-                where saleItem.SiProductId == productId
-                join sale in db.Sales on saleItem.SaleItemId equals sale.SaleId
-                join product in db.Products on saleItem.SiProductId equals product.ProductId
-                group saleItem by new { sale.SaleDate.Year, sale.SaleDate.Month, product.ProductName } into g
-                select new
-                {
-                    Товар = g.Key.ProductName,
-                    Месяц = new DateTime(g.Key.Year, g.Key.Month, 1),
-                    Продано = g.Sum(x => x.SiQuantity)
-                }
-            ).ToListAsync();
+            // 1. Получаем название товара
+            var productQuery = from view in db.SaleWithSupplierInfoViews
+                               where view.ProductId == productId
+                               select view.ProductName;
+
+            string productName = await productQuery.FirstOrDefaultAsync();
+
+            if (string.IsNullOrEmpty(productName))
+                productName = "Не найден";
+
+            // 2. Продажи по месяцам
+            var monthlySalesQuery = from view in db.SaleWithSupplierInfoViews
+                                    where view.ProductId == productId
+                                    group view by new { view.SaleDate.Year, view.SaleDate.Month } into g
+                                    select new
+                                    {
+                                        Месяц = new DateTime(g.Key.Year, g.Key.Month, 1),
+                                        Продано = g.Sum(x => x.SaleQuantity)
+                                    };
+
+            var monthlySales = await monthlySalesQuery.ToListAsync();
 
             double average = monthlySales.Any() ? monthlySales.Average(x => x.Продано) : 0;
 
-            return new { Товар = monthlySales.First(x => x.Товар is not null).Товар, Среднее_количество_продаж = average };
+            return
+            [
+                new
+                {
+                    Товар = productName,
+                    Среднее_количество_продаж = Math.Round(average, 2),
+                    Количество_месяцев = monthlySales.Count
+                }
+            ];
         }
 
         /// <summary>
@@ -233,6 +252,9 @@ namespace AutoPartsStore.Data
         public async Task<List<object>> GetSupplierContributionAsync(int supplierId, DateTime startDate, DateTime endDate)
         {
             using var db = _dbContextFactory();
+
+            var nfi = (NumberFormatInfo)CultureInfo.InvariantCulture.NumberFormat.Clone();
+            nfi.NumberGroupSeparator = " ";
 
             // Группируем по товару и поставщику
             var query = from sale in db.SaleWithSupplierInfoViews
@@ -249,21 +271,21 @@ namespace AutoPartsStore.Data
                         {
                             Товар = g.Key.ProductName,
                             Количество = g.Sum(x => x.SaleQuantity),
-                            Выручка = g.Sum(x => x.SalePrice * x.SaleQuantity),
+                            Выручка = g.Sum(x => x.SalePrice * x.SaleQuantity).ToString("#.##") + " руб.",
                             Доля_по_единицам = (
-                                (double)g.Sum(x => x.SaleQuantity) / (
-                                    from all in db.SaleWithSupplierInfoViews
-                                    where all.SaleDate >= startDate && all.SaleDate <= endDate
-                                    select all
-                                ).Sum(x => x.SaleQuantity) * 100
-                            ),
+                                                (double)g.Sum(x => x.SaleQuantity) / (
+                                                    from all in db.SaleWithSupplierInfoViews
+                                                    where all.SaleDate >= startDate && all.SaleDate <= endDate
+                                                    select all
+                                                ).Sum(x => x.SaleQuantity) * 100
+                                            ).ToString("#.##") + " %",
                             Доля_по_выручке = (
                                 g.Sum(x => x.SalePrice * x.SaleQuantity) / (
                                     from all in db.SaleWithSupplierInfoViews
                                     where all.SaleDate >= startDate && all.SaleDate <= endDate
                                     select all
                                 ).Sum(x => x.SalePrice * x.SaleQuantity) * 100
-                            )
+                            ).ToString("#.##", nfi) + " %",
                         };
 
             return await query.Cast<object>().ToListAsync();
@@ -272,34 +294,60 @@ namespace AutoPartsStore.Data
         /// <summary>
         /// Запрос 7.2: Получите прибыль магазина за указанный период с учетом закупочных цен.
         /// </summary>
-        public async Task<object> GetStoreProfitAsync(DateTime startDate, DateTime endDate)
+        public async Task<List<object>> GetStoreProfitAsync(DateTime startDate, DateTime endDate)
         {
             using var db = _dbContextFactory();
 
-            var result = await (
+            // 1. Выручка и себестоимость через представление продаж
+            var salesData = await (
                 from sale in db.SaleWithSupplierInfoViews
                 where sale.SaleDate >= startDate && sale.SaleDate <= endDate
-                group sale by 1 into g // группировка для агрегации
                 select new
                 {
-                    Общая_выручка = g.Sum(x => x.SalePrice * x.SaleQuantity),
-                    Общие_закупки = g.Sum(x => x.PurchasePrice * x.SaleQuantity),
-                    Прибыль = g.Sum(x => x.Profit)
+                    sale.SalePrice,
+                    sale.PurchasePrice,
+                    sale.SaleQuantity
                 }
-            ).FirstOrDefaultAsync();
+            ).ToListAsync();
 
-            return result ?? new
+            decimal totalRevenue = salesData.Sum(x => x.SalePrice * x.SaleQuantity);
+            decimal totalPurchaseCost = salesData.Sum(x => x.PurchasePrice * x.SaleQuantity);
+
+            // 2. Возвраты
+            var totalRefunds = await (
+                from refund in db.CustomerRefunds
+                where refund.RefundDate >= startDate && refund.RefundDate <= endDate
+                select refund.RefundAmount
+            ).SumAsync();
+
+            // 3. Таможенные платежи
+            var totalCustomsPayments = await (
+                from cp in db.CustomPayments
+                where cp.PaymentDate >= startDate && cp.PaymentDate <= endDate
+                select cp.PaymentAmount
+            ).SumAsync();
+
+            // 4. Чистая прибыль
+            decimal grossProfit = totalRevenue - totalPurchaseCost;
+            decimal netProfit = grossProfit - totalCustomsPayments - totalRefunds;
+
+            return new List<object>
             {
-                Общая_выручка = 0m,
-                Общие_закупки = 0m,
-                Прибыль = 0m
+                new
+                {
+                    Общая_выручка = $"{totalRevenue:F2} руб.",
+                    Себестоимость = $"{totalPurchaseCost:F2} руб.",
+                    Возвраты = $"{totalRefunds:F2} руб.",
+                    Таможенные_платежи = $"{totalCustomsPayments:F2} руб.",
+                    Чистая_прибыль = $"{netProfit:F2} руб."
+                }
             };
         }
 
         /// <summary>
         /// Запрос 8) Получите долю наклладных расходов в процентах от объема продаж за указанный период.
         /// </summary>
-        public async Task<object> GetOverheadRatioAsync(DateTime startDate, DateTime endDate)
+        public async Task<List<object>> GetOverheadRatioAsync(DateTime startDate, DateTime endDate)
         {
             using var db = _dbContextFactory();
 
@@ -322,12 +370,15 @@ namespace AutoPartsStore.Data
             // 3. Процент таможенных платежей от выручки
             double customsPercent = totalRevenue == 0 ? 0 : (double)(totalCustomsPayments / totalRevenue) * 100;
 
-            return new
-            {
-                Объем_продаж = totalRevenue,
-                Таможенные_платежи = totalCustomsPayments,
-                Доля_в_процентах = $"{customsPercent:F2}%"
-            };
+            return
+            [
+                new
+                {
+                    Объем_продаж = totalRevenue.ToString("0.##") + " руб.",
+                    Таможенные_платежи = totalCustomsPayments.ToString("0.##") + " руб.",
+                    Доля_в_процентах = $"{customsPercent:F2} %"
+                }
+            ];
         }
 
         /// <summary>
@@ -338,14 +389,13 @@ namespace AutoPartsStore.Data
         {
             using var db = _dbContextFactory();
 
-            // 1. Получаем все поставленные товары за период
+            // 1. Поставки за период
             var deliveredQuery = from bi in db.BatchItems
                                  join b in db.Batches on bi.BiBatchId equals b.BatchId
-                                 where b.DeliveryDate >= startDate && b.DeliveryDate <= endDate
-                                 group bi by new { bi.BiProductId } into g
+                                 where b.DeliveryDate >= startDate && b.DeliveryDate <= endDate group bi by bi.BiProductId into g
                                  select new
                                  {
-                                     ProductId = g.Key.BiProductId,
+                                     ProductId = g.Key,
                                      TotalDelivered = g.Sum(x => x.BatchItemQuantity)
                                  };
 
@@ -354,22 +404,23 @@ namespace AutoPartsStore.Data
             if (!delivered.Any())
                 return new List<object>();
 
-            // 2. Проданные товары за тот же период
-            var soldQuery = from s in db.SaleWithSupplierInfoViews
+            // 2. Продажи за период
+            var soldQuery = from si in db.SaleItems
+                            join s in db.Sales on si.SiSaleId equals s.SaleId
                             where s.SaleDate >= startDate && s.SaleDate <= endDate
-                            group s by new { s.ProductId } into g
+                            group si by si.SiProductId into g
                             select new
                             {
-                                g.Key.ProductId,
-                                TotalSold = g.Sum(x => x.SaleQuantity)
+                                ProductId = g.Key,
+                                Sold = g.Sum(x => x.SiQuantity)
                             };
 
             var sold = await soldQuery.ToListAsync();
 
-            // 3. Считаем непроданный товар
+            // 3. Непроданный товар
             var unsoldProducts = delivered.Select(d =>
             {
-                int soldQty = sold.FirstOrDefault(s => s.ProductId == d.ProductId)?.TotalSold ?? 0;
+                int soldQty = sold.FirstOrDefault(s => s.ProductId == d.ProductId)?.Sold ?? 0;
                 return new
                 {
                     d.ProductId,
@@ -379,25 +430,30 @@ namespace AutoPartsStore.Data
                 };
             }).Where(u => u.Unsold > 0).ToList();
 
-            // 4. Общий объём поставок
+            // 4. Агрегация
             int totalDelivered = delivered.Sum(x => x.TotalDelivered);
             int totalUnsold = unsoldProducts.Sum(x => x.Unsold);
 
-            double percentage = totalDelivered == 0 ? 0 : (double)totalUnsold / totalDelivered * 100;
+            // 5. Получаем названия товаров
+            var productIds = unsoldProducts.Select(u => u.ProductId).ToList();
 
-            // 5. Финальная проекция с названиями товаров
-            var result = await (
-                from p in db.Products
-                join up in unsoldProducts on p.ProductId equals up.ProductId
-                select new
+            var products = await db.Products
+                .Where(p => productIds.Contains(p.ProductId))
+                .ToDictionaryAsync(p => p.ProductId, p => p.ProductName);
+
+            // 6. Формируем результат
+            var result = unsoldProducts
+                .Where(u => products.ContainsKey(u.ProductId))
+                .Select(u => new
                 {
-                    Товар = p.ProductName,
-                    Поставлено = up.TotalDelivered,
-                    Продано = up.Sold,
-                    Остаток = up.Unsold,
-                    Процент_от_общего = $"{percentage:F2}%"
-                }
-            ).ToListAsync<object>();
+                    Товар = products[u.ProductId],
+                    Поставлено = u.TotalDelivered,
+                    Продано = u.Sold,
+                    Остаток = u.Unsold,
+                    Процент = ( u.Unsold / (float)u.TotalDelivered * 100).ToString("0.##") + " %"
+                })
+                .Cast<object>()
+                .ToList();
 
             return result;
         }
@@ -443,7 +499,7 @@ namespace AutoPartsStore.Data
                                   {
                                       Товар = g.Key.ProductName,
                                       Количество = g.Sum(x => x.SaleQuantity),
-                                      Сумма = g.Sum(x => x.SaleQuantity * x.SalePrice)
+                                      Сумма = g.Sum(x => x.SaleQuantity * x.SalePrice).ToString("#.##") + " руб."
                                   };
 
             return await dailySalesQuery.ToListAsync<object>();
@@ -452,7 +508,7 @@ namespace AutoPartsStore.Data
         /// <summary>
         /// Запрос 12) Получите кассовый отчет за определенный период.
         /// </summary>
-        public async Task<object> GetCashReportAsync(DateTime startDate, DateTime endDate)
+        public async Task<List<object>> GetCashReportAsync(DateTime startDate, DateTime endDate)
         {
             using var db = _dbContextFactory();
 
@@ -477,12 +533,15 @@ namespace AutoPartsStore.Data
 
             decimal netIncome = totalRevenue - totalRefunds;
 
-            return new
-            {
-                Общая_выручка = totalRevenue,
-                Возвраты = totalRefunds,
-                Чистый_доход = netIncome
-            };
+            return
+            [
+                new
+                {
+                    Общая_выручка = totalRevenue.ToString("#.##") + " руб.",
+                    Возвраты = totalRefunds.ToString("#.##") + " руб.",
+                    Чистый_доход = netIncome.ToString("#.##") + " руб."
+                }
+            ];
         }
 
         /// <summary>
@@ -513,12 +572,12 @@ namespace AutoPartsStore.Data
             var avgStockValueQuery = from bi in db.BatchItems
                                      join p in db.Products on bi.BiProductId equals p.ProductId
                                      join b in db.Batches on bi.BiBatchId equals b.BatchId
-                                     where b.DeliveryDate <= endDate
+                                     where b.DeliveryDate <= endDate && b.DeliveryDate >= startDate
                                      group new { bi, p } by new { bi.BiProductId, p.ProductName } into g
                                      select new
                                      {
                                          ProductId = g.Key.BiProductId,
-                                         ProductName = g.Key.ProductName,
+                                         g.Key.ProductName,
                                          AvgInventoryValue = g.Average(x => x.bi.RemainingItem * x.p.ProductSalePrice)
                                      };
 
@@ -538,8 +597,8 @@ namespace AutoPartsStore.Data
                 turnoverList.Add(new
                 {
                     Товар = item.ProductName,
-                    Выручка = item.SalesRevenue,
-                    Средний_товарный_остаток = avgInventory,
+                    Выручка = item.SalesRevenue.ToString("#.##") + " руб.",
+                    Средний_товарный_остаток = avgInventory.Value.ToString("#.##") + " руб.",
                     Оборачиваемость = $"{turnover:F2} раз(а)"
                 });
             }
@@ -560,10 +619,11 @@ namespace AutoPartsStore.Data
                                   {
                                       Ячейка = cell.CellName,
                                       Описание = cell.LocationDescription,
-                                      Ширина = cell.Width.ToString() + " м",
-                                      Высота = cell.Height.ToString() + " м",
-                                      Глубина = cell.Depth.ToString() + " м",
-                                      Объем = (cell.Width * cell.Height * cell.Depth).ToString() + " м³"
+                                      Ширина = cell.Width.ToString("#.##") + " м",
+                                      Высота = cell.Height.ToString("#.##") + " м",
+                                      Глубина = cell.Depth.ToString("#.##") + " м",
+                                      Объем = (cell.Width * cell.Height * cell.Depth).ToString("#.##") + " м³",
+                                      Вместимый_вес = (cell.MaxWeight).ToString() + " кг"
                                   };
 
             return await emptyCellsQuery.ToListAsync<object>();
@@ -588,7 +648,7 @@ namespace AutoPartsStore.Data
                                    Товар = product.ProductName,
                                    Клиент = $"{customer.CustomerName} {customer.CustomerSurname} {customer.CustomerPatronymic}",
                                    Количество = coi.CoiQuantity,
-                                   Сумма = coi.CoiQuantity * product.ProductSalePrice
+                                   Сумма = (coi.CoiQuantity * product.ProductSalePrice).ToString("#.##") + " руб."
                                };
 
             return await requestQuery.ToListAsync<object>();

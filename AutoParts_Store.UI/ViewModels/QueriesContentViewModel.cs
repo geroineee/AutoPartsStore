@@ -11,6 +11,7 @@ using Avalonia.Controls.Templates;
 using Avalonia;
 using Avalonia.Data;
 using Avalonia.Media;
+using Avalonia.Notification;
 
 namespace AutoParts_Store.UI.ViewModels
 {
@@ -28,6 +29,9 @@ namespace AutoParts_Store.UI.ViewModels
         private string _description = "Описание запроса";
 
         private ObservableCollection<ParameterViewModel> _parameters = [];
+
+        private INotificationMessage? _currentNotification;
+        public INotificationMessageManager NotificationManager { get; } = new NotificationMessageManager();
 
         public string Header
         {
@@ -367,7 +371,6 @@ namespace AutoParts_Store.UI.ViewModels
 
             try
             {
-                // Создаем массив параметров в том же порядке, как определено в QueryVariation.Parameters
                 var parameters = new object[SelectedQueryVariation.Parameters.Count];
 
                 for (int i = 0; i < SelectedQueryVariation.Parameters.Count; i++)
@@ -406,13 +409,13 @@ namespace AutoParts_Store.UI.ViewModels
                     }
                 }
 
-                // Выполняем запрос с корректно упорядоченными параметрами
+                // Выполняем запрос
                 var query = await SelectedQueryVariation.ExecutionFunction(parameters);
                 Data = new ObservableCollection<object>(query);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Ошибка выполнения запроса: {ex.Message}");
+                _currentNotification = CreateNotification("Ошибка", $"Ошибка выполнения запроса: {ex.Message}", NotificationManager, _currentNotification);
             }
         }
 
@@ -580,6 +583,327 @@ namespace AutoParts_Store.UI.ViewModels
                         ExecutionFunction = async (parameters) =>
                         {
                             return await _queriesService.GetCells();
+                        },
+                        Parameters = new List<QueryParameter>()
+                    }
+                }
+            });
+
+            QueryDefinitions.Add(new QueryDefinition
+            {
+                DisplayName = "5. Топ продаваемых деталей и дешевые поставщики",
+                Description = "Выведите в порядке возрастания десять самых продаваемых деталей и десять самых «дешевых» поставщиков.",
+                Variations = new List<QueryVariation>
+                {
+                    new QueryVariation
+                    {
+                        DisplayName = "Топ 10 продаваемых деталей",
+                        Description = "Запрос без фильтров.",
+                        ExecutionFunction = async (parameters) =>
+                        {
+                            return await _queriesService.GetTopSellingProductsAsync();
+                        },
+                        Parameters = new List<QueryParameter>()
+                    },
+                    new QueryVariation
+                    {
+                        DisplayName = "Топ 10 дешевых поставщиков",
+                        Description = "Фильтр по товару",
+                        ExecutionFunction = async (parameters) =>
+                        {
+                            int productId = parameters[0] != null ? (int)parameters[0] : 0;
+                            return await _queriesService.GetCheapestSuppliersAsync(productId);
+                        },
+                        Parameters = new List<QueryParameter>()
+                        {
+                            new QueryParameter
+                            {
+                                DisplayName = "ID товара",
+                                PropertyName = "ProductId",
+                                ParameterType = typeof(int),
+                                InputType = QueryParameterType.ComboBox,
+                                SourceTable = "Products",
+                                DisplayMember = "ProductName",
+                                ValueMember = "ProductId"
+                            }
+                        }
+                    }
+                }
+            });
+
+            QueryDefinitions.Add(new QueryDefinition
+            {
+                DisplayName = "6. Среднее число продаж на месяц",
+                Description = "Получите среднее число продаж на месяц по любому виду деталей.",
+                Variations = new List<QueryVariation>
+                {
+                    new QueryVariation
+                    {
+                        DisplayName = "По указанному товару",
+                        Description = "Запрос с фильтром по ID товара.",
+                        ExecutionFunction = async (parameters) =>
+                        {
+                            int productId = parameters[0] != null ? (int)parameters[0] : 0;
+                            var res = (List<object>?)await _queriesService.GetAverageMonthlySalesAsync(productId);
+                            return res;
+                        },
+                        Parameters = new List<QueryParameter>
+                        {
+                            new QueryParameter
+                            {
+                                DisplayName = "ID товара",
+                                PropertyName = "ProductId",
+                                ParameterType = typeof(int),
+                                InputType = QueryParameterType.ComboBox,
+                                SourceTable = "Products",
+                                DisplayMember = "ProductName",
+                                ValueMember = "ProductId"
+                            }
+                        }
+                    }
+                }
+            });
+
+            QueryDefinitions.Add(new QueryDefinition
+            {
+                DisplayName = "7. Доля товара поставщика и прибыль магазина",
+                Description = "Получите долю товара конкретного поставщика в процентах, деньгах, единицах от всего оборота магазина, прибыль магазина за указанный период.",
+                Variations = new List<QueryVariation>
+                {
+                    new QueryVariation
+                    {
+                        DisplayName = "Доля товара поставщика",
+                        Description = "Запрос с фильтром по ID поставщика и периоду.",
+                        ExecutionFunction = async (parameters) =>
+                        {
+                            int supplierId = parameters[0] != null ? (int)parameters[0] : 0;
+                            DateTime startDate = parameters[1] != null ? (DateTime)parameters[1] : DateTime.MinValue;
+                            DateTime endDate = parameters[2] != null ? (DateTime)parameters[2] : DateTime.MaxValue;
+
+                            return await _queriesService.GetSupplierContributionAsync(supplierId, startDate, endDate);
+                        },
+                        Parameters = new List<QueryParameter>
+                        {
+                            new QueryParameter
+                            {
+                                DisplayName = "ID поставщика",
+                                PropertyName = "SupplierId",
+                                ParameterType = typeof(int),
+                                InputType = QueryParameterType.ComboBox,
+                                SourceTable = "Suppliers",
+                                DisplayMember = "SupplierName",
+                                ValueMember = "SupplierId"
+                            },
+                            new QueryParameter { DisplayName = "Дата начала", PropertyName = "StartDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker },
+                            new QueryParameter { DisplayName = "Дата окончания", PropertyName = "EndDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker }
+                        }
+                    },
+                    new QueryVariation
+                    {
+                        DisplayName = "Прибыль магазина за период",
+                        Description = "Запрос с фильтром по периоду.",
+                        ExecutionFunction = async (parameters) =>
+                        {
+                            DateTime startDate = parameters[0] != null ? (DateTime)parameters[0] : DateTime.MinValue;
+                            DateTime endDate = parameters[1] != null ? (DateTime)parameters[1] : DateTime.MaxValue;
+
+                            return await _queriesService.GetStoreProfitAsync(startDate, endDate);
+                        },
+                        Parameters = new List<QueryParameter>
+                        {
+                            new QueryParameter { DisplayName = "Дата начала", PropertyName = "StartDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker },
+                            new QueryParameter { DisplayName = "Дата окончания", PropertyName = "EndDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker }
+                        }
+                    }
+                }
+            });
+
+            QueryDefinitions.Add(new QueryDefinition
+            {
+                DisplayName = "8. Накладные расходы в процентах от объема продаж",
+                Description = "Получите накладные расходы в процентах от объема продаж.",
+                Variations = new List<QueryVariation>
+                {
+                    new QueryVariation
+                    {
+                        DisplayName = "За период",
+                        Description = "Запрос с фильтром по периоду.",
+                        ExecutionFunction = async (parameters) =>
+                        {
+                            DateTime startDate = parameters[0] != null ? (DateTime)parameters[0] : DateTime.MinValue;
+                            DateTime endDate = parameters[1] != null ? (DateTime)parameters[1] : DateTime.MaxValue;
+
+                            return await _queriesService.GetOverheadRatioAsync(startDate, endDate);
+                        },
+                        Parameters = new List<QueryParameter>
+                        {
+                            new QueryParameter { DisplayName = "Дата начала", PropertyName = "StartDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker },
+                            new QueryParameter { DisplayName = "Дата окончания", PropertyName = "EndDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker }
+                        }
+                    }
+                }
+            });
+
+            QueryDefinitions.Add(new QueryDefinition
+            {
+                DisplayName = "9. Непроданный товар на складе",
+                Description = "Получите перечень и общее количество непроданного товара на складе за определенный период и его объем от общего товара в процентах.",
+                Variations = new List<QueryVariation>
+                {
+                    new QueryVariation
+                    {
+                        DisplayName = "За период",
+                        Description = "Запрос с фильтром по периоду.",
+                        ExecutionFunction = async (parameters) =>
+                        {
+                            DateTime startDate = parameters[0] != null ? (DateTime)parameters[0] : DateTime.MinValue;
+                            DateTime endDate = parameters[1] != null ? (DateTime)parameters[1] : DateTime.MaxValue;
+
+                            return await _queriesService.GetUnsoldStockReportAsync(startDate, endDate);
+                        },
+                        Parameters = new List<QueryParameter>
+                        {
+                            new QueryParameter { DisplayName = "Дата начала", PropertyName = "StartDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker },
+                            new QueryParameter { DisplayName = "Дата окончания", PropertyName = "EndDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker }
+                        }
+                    }
+                }
+            });
+
+            QueryDefinitions.Add(new QueryDefinition
+            {
+                DisplayName = "10. Бракованный товар",
+                Description = "Получите перечень и общее количество бракованного товара, пришедшего за определенный период и список поставщиков, поставивших товар.",
+                Variations = new List<QueryVariation>
+                {
+                    new QueryVariation
+                    {
+                        DisplayName = "За период",
+                        Description = "Запрос с фильтром по периоду.",
+                        ExecutionFunction = async (parameters) =>
+                        {
+                            DateTime startDate = parameters[0] != null ? (DateTime)parameters[0] : DateTime.MinValue;
+                            DateTime endDate = parameters[1] != null ? (DateTime)parameters[1] : DateTime.MaxValue;
+
+                            return await _queriesService.GetDefectiveItemsAsync(startDate, endDate);
+                        },
+                        Parameters = new List<QueryParameter>
+                        {
+                            new QueryParameter { DisplayName = "Дата начала", PropertyName = "StartDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker },
+                            new QueryParameter { DisplayName = "Дата окончания", PropertyName = "EndDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker }
+                        }
+                    }
+                }
+            });
+
+            QueryDefinitions.Add(new QueryDefinition
+            {
+                DisplayName = "11. Реализованный товар за день",
+                Description = "Получите перечень, общее количество и стоимость товара, реализованного за конкретный день.",
+                Variations = new List<QueryVariation>
+                {
+                    new QueryVariation
+                    {
+                        DisplayName = "За указанный день",
+                        Description = "Запрос с фильтром по дате.",
+                        ExecutionFunction = async (parameters) =>
+                        {
+                            DateTime saleDate = parameters[0] != null ? (DateTime)parameters[0] : DateTime.Now;
+
+                            return await _queriesService.GetDailySalesReportAsync(saleDate);
+                        },
+                        Parameters = new List<QueryParameter>
+                        {
+                            new QueryParameter { DisplayName = "Дата продажи", PropertyName = "SaleDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker }
+                        }
+                    }
+                }
+            });
+
+            QueryDefinitions.Add(new QueryDefinition
+            {
+                DisplayName = "12. Кассовый отчет",
+                Description = "Получите кассовый отчет за определенный период.",
+                Variations = new List<QueryVariation>
+                {
+                    new QueryVariation
+                    {
+                        DisplayName = "За период",
+                        Description = "Запрос с фильтром по периоду.",
+                        ExecutionFunction = async (parameters) =>
+                        {
+                            DateTime startDate = parameters[0] != null ? (DateTime)parameters[0] : DateTime.MinValue;
+                            DateTime endDate = parameters[1] != null ? (DateTime)parameters[1] : DateTime.MaxValue;
+
+                            return await _queriesService.GetCashReportAsync(startDate, endDate);
+                        },
+                        Parameters = new List<QueryParameter>
+                        {
+                            new QueryParameter { DisplayName = "Дата начала", PropertyName = "StartDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker },
+                            new QueryParameter { DisplayName = "Дата окончания", PropertyName = "EndDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker }
+                        }
+                    }
+                }
+            });
+
+            QueryDefinitions.Add(new QueryDefinition
+            {
+                DisplayName = "13. Скорость оборота денежных средств",
+                Description = "Получите скорость оборота денежных средств, вложенных в товар (как быстро товар продается).",
+                Variations = new List<QueryVariation>
+                {
+                    new QueryVariation
+                    {
+                        DisplayName = "За период",
+                        Description = "Запрос с фильтром по периоду.",
+                        ExecutionFunction = async (parameters) =>
+                        {
+                            DateTime startDate = parameters[0] != null ? (DateTime)parameters[0] : DateTime.MinValue;
+                            DateTime endDate = parameters[1] != null ? (DateTime)parameters[1] : DateTime.MaxValue;
+
+                            return await _queriesService.GetProductTurnoverRateAsync(startDate, endDate);
+                        },
+                        Parameters = new List<QueryParameter>
+                        {
+                            new QueryParameter { DisplayName = "Дата начала", PropertyName = "StartDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker },
+                            new QueryParameter { DisplayName = "Дата окончания", PropertyName = "EndDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker }
+                        }
+                    }
+                }
+            });
+
+            QueryDefinitions.Add(new QueryDefinition
+            {
+                DisplayName = "14. Пустые ячейки на складе",
+                Description = "Подсчитайте, сколько пустых ячеек на складе и сколько он сможет вместить товара.",
+                Variations = new List<QueryVariation>
+                {
+                    new QueryVariation
+                    {
+                        DisplayName = "Все пустые ячейки",
+                        Description = "Запрос без фильтров.",
+                        ExecutionFunction = async (parameters) =>
+                        {
+                            return await _queriesService.GetEmptyStorageCellsAsync();
+                        },
+                        Parameters = new List<QueryParameter>()
+                    }
+                }
+            });
+
+            QueryDefinitions.Add(new QueryDefinition
+            {
+                DisplayName = "15. Заявки от покупателей на ожидаемый товар",
+                Description = "Получите перечень и общее количество заявок от покупателей на ожидаемый товар, подсчитайте, на какую сумму даны заявки.",
+                Variations = new List<QueryVariation>
+                {
+                    new QueryVariation
+                    {
+                        DisplayName = "Все заявки",
+                        Description = "Запрос без фильтров.",
+                        ExecutionFunction = async (parameters) =>
+                        {
+                            return await _queriesService.GetCustomerOrderRequestsAsync();
                         },
                         Parameters = new List<QueryParameter>()
                     }

@@ -70,10 +70,19 @@
 			</SplitView.Pane>
 
 			<!--Окно-->
-			<Grid RowDefinitions="50, *" ColumnDefinitions="*">
+			<Grid RowDefinitions="80, *" ColumnDefinitions="*">
 
 				<StackPanel Grid.Row="0" VerticalAlignment="Center">
-					<TextBlock Text="{Binding HeaderText}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="25"/>
+					<TextBlock Text="{Binding HeaderText}"
+							   HorizontalAlignment="Center"
+							   VerticalAlignment="Center"
+							   FontSize="25"
+							   Margin="8"/>
+					<TextBlock Text="{Binding LoginedUsername}"
+							   IsVisible="{Binding IsAuthenticated}"
+							   HorizontalAlignment="Center" VerticalAlignment="Center"
+							   FontSize="14"
+							   Margin="8"/>
 				</StackPanel>
 
 				<StackPanel Name="Content" Grid.Row="1">

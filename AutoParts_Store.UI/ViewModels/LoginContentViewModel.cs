@@ -13,6 +13,7 @@ namespace AutoParts_Store.UI.ViewModels
         private readonly IAuthenticationService _authenticationService;
         private readonly MainWindowViewModel _mainWindowViewModel;
 
+
         public LoginContentViewModel(IAuthenticationService authenticationService, MainWindowViewModel mainWindowViewModel)
         {
             _authenticationService = authenticationService ?? throw new ArgumentNullException(nameof(authenticationService)); //Add not null check
@@ -39,11 +40,11 @@ namespace AutoParts_Store.UI.ViewModels
 
         public async Task LoginAsync()
         {
-            // Use _authenticationService here.  It should no longer be null
             bool authenticated = await _authenticationService.AuthenticateAsync(Username, Password);
             if (authenticated)
             {
                 ErrorMessage = "";
+                _mainWindowViewModel.LoginedUsername = Username;
                 _mainWindowViewModel.ShowMainContent(); // Notify MainWindow to switch content
             }
             else

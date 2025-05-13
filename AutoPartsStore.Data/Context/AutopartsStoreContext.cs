@@ -36,8 +36,6 @@ public partial class AutopartsStoreContext : DbContext
 
     public virtual DbSet<Defect> Defects { get; set; }
 
-    public virtual DbSet<DefectiveItemView> DefectiveItemViews { get; set; }
-
     public virtual DbSet<DeliveryTerm> DeliveryTerms { get; set; }
 
     public virtual DbSet<Employee> Employees { get; set; }
@@ -366,13 +364,6 @@ public partial class AutopartsStoreContext : DbContext
                 .HasConstraintName("defect_ibfk_1");
         });
 
-        modelBuilder.Entity<DefectiveItemView>(entity =>
-        {
-            entity
-                .HasNoKey()
-                .ToView("defective_item_view");
-        });
-
         modelBuilder.Entity<DeliveryTerm>(entity =>
         {
             entity.HasKey(e => new { e.DtProductId, e.DtSupplierId })
@@ -542,14 +533,30 @@ public partial class AutopartsStoreContext : DbContext
                 .HasNoKey()
                 .ToView("sale_with_supplier_info_view");
 
-            entity.Property(e => e.ProductName).HasMaxLength(100);
-            entity.Property(e => e.Profit).HasPrecision(21, 2);
-            entity.Property(e => e.PurchasePrice).HasPrecision(10, 2);
+            entity.Property(e => e.ProductId).HasColumnName("product_id");
+            entity.Property(e => e.ProductName)
+                .HasMaxLength(100)
+                .HasColumnName("product_name");
+            entity.Property(e => e.Profit)
+                .HasPrecision(21, 2)
+                .HasColumnName("profit");
+            entity.Property(e => e.PurchasePrice)
+                .HasPrecision(10, 2)
+                .HasColumnName("purchase_price");
             entity.Property(e => e.SaleDate)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("timestamp");
-            entity.Property(e => e.SalePrice).HasPrecision(10, 2);
-            entity.Property(e => e.SupplierName).HasMaxLength(100);
+                .HasColumnType("timestamp")
+                .HasColumnName("sale_date");
+            entity.Property(e => e.SaleId).HasColumnName("sale_id");
+            entity.Property(e => e.SaleItemId).HasColumnName("sale_item_id");
+            entity.Property(e => e.SalePrice)
+                .HasPrecision(10, 2)
+                .HasColumnName("sale_price");
+            entity.Property(e => e.SaleQuantity).HasColumnName("sale_quantity");
+            entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
+            entity.Property(e => e.SupplierName)
+                .HasMaxLength(100)
+                .HasColumnName("supplier_name");
         });
 
         modelBuilder.Entity<StorageCell>(entity =>

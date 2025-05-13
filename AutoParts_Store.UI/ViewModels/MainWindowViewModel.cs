@@ -16,10 +16,22 @@ namespace AutoParts_Store.UI.ViewModels
         private string _headerText;
         private bool _isAppThemeLight = false;
 
+        private string _loginedUsername;
+
         public bool IsAuthenticated
         {
             get => _isAuthenticated;
             private set => this.RaiseAndSetIfChanged(ref _isAuthenticated, value);
+        }
+
+        public string LoginedUsername
+        {
+            get => _loginedUsername;
+            set
+            {
+                string newMessage = $"Вы вошли как: {value}";
+                this.RaiseAndSetIfChanged(ref _loginedUsername, newMessage);
+            }
         }
 
         public string AppTheme
