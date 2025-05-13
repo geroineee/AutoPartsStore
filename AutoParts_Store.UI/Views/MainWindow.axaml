@@ -18,8 +18,7 @@
 	<Grid>
 		<SplitView IsPaneOpen="{Binding #tglMenu.IsChecked}" DisplayMode="CompactInline"
 				   CompactPaneLength="40"
-				   OpenPaneLength="250"
-				   IsVisible="{Binding IsAuthenticated}">
+				   OpenPaneLength="250">
 			<!--Меню-->
 			<SplitView.Pane>
 				<Grid RowDefinitions="Auto,*,Auto">
@@ -35,7 +34,8 @@
 								Margin="{StaticResource MenuButtonMargin}"
 								HorizontalAlignment="Stretch"
 								HorizontalContentAlignment="Center"
-								IsVisible="{Binding #tglMenu.IsChecked}"/>
+								IsVisible="{Binding #tglMenu.IsChecked}"
+								IsEnabled="{Binding IsAuthenticated}"/>
 
 						<Button Content="Просмотр записей"
 								Command="{Binding ChangeContent}"
@@ -43,7 +43,8 @@
 								Margin="{StaticResource MenuButtonMargin}"
 								HorizontalAlignment="Stretch"
 								HorizontalContentAlignment="Center"
-								IsVisible="{Binding #tglMenu.IsChecked}"/>
+								IsVisible="{Binding #tglMenu.IsChecked}"
+								IsEnabled="{Binding IsAuthenticated}"/>
 					</StackPanel>
 
 					<StackPanel Grid.Row="2" VerticalAlignment="Bottom">
@@ -54,6 +55,7 @@
 								Margin="{StaticResource MenuButtonMargin}"
 								VerticalAlignment="Bottom"
 								HorizontalAlignment="Stretch"
+								IsVisible="{Binding #tglMenu.IsChecked}"
 								HorizontalContentAlignment="Center"/>
 						<ToggleButton Content="Смена темы"
 								  Command="{Binding SetTheme}"
@@ -74,14 +76,13 @@
 					<TextBlock Text="{Binding HeaderText}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="25"/>
 				</StackPanel>
 
-				<StackPanel Name="Content" Grid.Row="1" Grid.Column="0">
+				<StackPanel Name="Content" Grid.Row="1">
 					<ContentControl Content="{Binding ContentViewModel}"/>
 				</StackPanel>
 			</Grid>
 
 		</SplitView>
-		
-		<ContentControl Content="{Binding ContentViewModel}" IsVisible="{Binding !IsAuthenticated}"/>
+	
 
 	</Grid>
 

@@ -667,7 +667,7 @@ public class AutoPartsStoreTables
                     cp.CustomPaymentId,
                     cp.CpBatch.BatchId,
                     cp.PaymentAmount,
-                    cp.PaymentDateDate
+                    cp.PaymentDate
                 })
         },
     };

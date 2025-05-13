@@ -50,6 +50,7 @@
                   CanUserResizeColumns="True"
                   CanUserReorderColumns="True"
                   ItemsSource="{Binding Data}"
+				  ColumnWidth="*"
                   AutoGenerateColumns="True"
                   Height="400"
                   IsReadOnly="True"

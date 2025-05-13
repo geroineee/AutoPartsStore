@@ -50,6 +50,8 @@ public partial class AutopartsStoreContext : DbContext
 
     public virtual DbSet<SaleItem> SaleItems { get; set; }
 
+    public virtual DbSet<SaleWithSupplierInfoView> SaleWithSupplierInfoViews { get; set; }
+
     public virtual DbSet<StorageCell> StorageCells { get; set; }
 
     public virtual DbSet<Supplier> Suppliers { get; set; }
@@ -77,6 +79,18 @@ public partial class AutopartsStoreContext : DbContext
             entity
                 .HasNoKey()
                 .ToView("available_product_on_storage_view");
+
+            entity.Property(e => e.BatchId).HasColumnName("batch_id");
+            entity.Property(e => e.BatchItemId).HasColumnName("batch_item_id");
+            entity.Property(e => e.BiCellId).HasColumnName("bi_cell_id");
+            entity.Property(e => e.CellName)
+                .HasMaxLength(10)
+                .HasColumnName("cell_name");
+            entity.Property(e => e.CurrentQuantity).HasColumnName("current_quantity");
+            entity.Property(e => e.ProductId).HasColumnName("product_id");
+            entity.Property(e => e.ProductName)
+                .HasMaxLength(100)
+                .HasColumnName("product_name");
         });
 
         modelBuilder.Entity<Batch>(entity =>
@@ -175,10 +189,10 @@ public partial class AutopartsStoreContext : DbContext
             entity.Property(e => e.PaymentAmount)
                 .HasPrecision(10, 2)
                 .HasColumnName("payment_amount");
-            entity.Property(e => e.PaymentDateDate)
+            entity.Property(e => e.PaymentDate)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp")
-                .HasColumnName("payment_date DATE");
+                .HasColumnName("payment_date");
 
             entity.HasOne(d => d.CpBatch).WithMany(p => p.CustomPayments)
                 .HasForeignKey(d => d.CpBatchId)
@@ -520,6 +534,22 @@ public partial class AutopartsStoreContext : DbContext
                 .HasForeignKey(d => d.SiSaleId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("sale_item_ibfk_2");
+        });
+
+        modelBuilder.Entity<SaleWithSupplierInfoView>(entity =>
+        {
+            entity
+                .HasNoKey()
+                .ToView("sale_with_supplier_info_view");
+
+            entity.Property(e => e.ProductName).HasMaxLength(100);
+            entity.Property(e => e.Profit).HasPrecision(21, 2);
+            entity.Property(e => e.PurchasePrice).HasPrecision(10, 2);
+            entity.Property(e => e.SaleDate)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp");
+            entity.Property(e => e.SalePrice).HasPrecision(10, 2);
+            entity.Property(e => e.SupplierName).HasMaxLength(100);
         });
 
         modelBuilder.Entity<StorageCell>(entity =>

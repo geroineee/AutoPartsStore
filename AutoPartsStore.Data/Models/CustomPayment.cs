@@ -14,7 +14,7 @@ public partial class CustomPayment
 
     public decimal PaymentAmount { get; set; }
 
-    public DateTime PaymentDateDate { get; set; }
+    public DateTime PaymentDate { get; set; }
 
     public virtual Batch CpBatch { get; set; } = null!;
 }

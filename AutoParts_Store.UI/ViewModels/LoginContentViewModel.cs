@@ -48,7 +48,7 @@ namespace AutoParts_Store.UI.ViewModels
             }
             else
             {
-                ErrorMessage = "Invalid username or password";
+                ErrorMessage = "Неверное имя пользователя или пароль";
             }
         }
     }

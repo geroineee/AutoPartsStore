@@ -108,6 +108,8 @@ namespace AutoParts_Store.UI.ViewModels
             QueriesControls.Clear();
             _parameterValues.Clear();
 
+            if (!MainWindowViewModel.Instance.IsAuthenticated) return;
+
             if (queryVariation == null) return;
 
             List<Task<Control>> controlCreationTasks = new List<Task<Control>>();
@@ -361,6 +363,8 @@ namespace AutoParts_Store.UI.ViewModels
         {
             if (SelectedQueryVariation == null) return;
 
+            if (!MainWindowViewModel.Instance.IsAuthenticated) return;
+
             try
             {
                 // Создаем массив параметров в том же порядке, как определено в QueryVariation.Parameters
@@ -562,6 +566,26 @@ namespace AutoParts_Store.UI.ViewModels
                     }
                 }
             });
+
+            QueryDefinitions.Add(new QueryDefinition
+            {
+                DisplayName = "4. Перечень деталей на складе",
+                Description = "Получить перечень, объем и номер ячейки для всех деталей, хранящихся на складе.",
+                Variations = new List<QueryVariation>
+                {
+                    new QueryVariation
+                    {
+                        DisplayName = "По всем товарам",
+                        Description = "Запрос без фильтров.",
+                        ExecutionFunction = async (parameters) =>
+                        {
+                            return await _queriesService.GetCells();
+                        },
+                        Parameters = new List<QueryParameter>()
+                    }
+                }
+            });
+
         }
     }
 }

@@ -2,17 +2,18 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="200"
+             mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="500"
 			 xmlns:vm="using:AutoParts_Store.UI.ViewModels"
 			 x:DataType="vm:LoginContentViewModel"
              x:Class="AutoParts_Store.UI.Views.LoginContentView">
-	
-	<StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-		<TextBlock Text="Login" HorizontalAlignment="Center" />
-		<TextBox Watermark="Имя пользователя" Text="{Binding Username}" Width="200" Margin="5"/>
-		<TextBox Watermark="Пароль" PasswordChar="*" Text="{Binding Password}" Width="200" Margin="5"/>
-		<Button Content="Войти" Command="{Binding LoginAsync}" Width="200" Margin="5"/>
-		<TextBlock Text="{Binding ErrorMessage}" HorizontalAlignment="Center" Foreground="Red"/>
-	</StackPanel>
+
+	<Grid RowDefinitions="200, *">
+		<StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+			<TextBox Watermark="Имя пользователя" Text="{Binding Username}" Width="200" Margin="5"/>
+			<TextBox Watermark="Пароль" PasswordChar="*" Text="{Binding Password}" Width="200" Margin="5"/>
+			<Button Content="Войти" Command="{Binding LoginAsync}" Width="200" Margin="5"/>
+			<TextBlock Text="{Binding ErrorMessage}" HorizontalAlignment="Center" Foreground="Red"/>
+		</StackPanel>
+	</Grid>
 	
 </UserControl>
