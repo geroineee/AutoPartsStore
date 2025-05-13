@@ -8,11 +8,15 @@
              x:Class="AutoParts_Store.UI.Views.QueriesContentView">
 
 	<StackPanel>
-		<ProgressBar IsIndeterminate="True"
-                     Height="4"
-                     Margin="8,0"
-                     IsVisible="{Binding IsLoading}"/>
 
+		<!--Заголовок с описанием-->
+		<Border BorderBrush="Gray" BorderThickness="1" Margin="8" CornerRadius="5">
+			<StackPanel Margin="5">
+				<TextBlock FontWeight="Bold" FontSize="16" Text="{Binding Header}" HorizontalAlignment="Center" />
+				<TextBlock Text="{Binding Description}" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+			</StackPanel>
+		</Border>
+		
 		<StackPanel Orientation="Horizontal">
 			<ComboBox ItemsSource="{Binding QueryDefinitions}"
                   SelectedItem="{Binding SelectedQueryDefinition}"
@@ -36,6 +40,11 @@
 		</ItemsControl>
 
 		<Button Content="Выполнить запрос" Command="{Binding ExecuteQuery}" Margin="8"/>
+
+		<ProgressBar IsIndeterminate="True"
+                     Height="4"
+                     Margin="8,0"
+                     IsVisible="{Binding IsLoading}"/>
 
 		<DataGrid Margin="8"
                   CanUserResizeColumns="True"

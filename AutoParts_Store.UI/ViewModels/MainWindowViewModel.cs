@@ -16,6 +16,12 @@ namespace AutoParts_Store.UI.ViewModels
         private string _headerText;
         private bool _isAppThemeLight = false;
 
+        public bool IsAuthenticated
+        {
+            get => _isAuthenticated;
+            private set => this.RaiseAndSetIfChanged(ref _isAuthenticated, value);
+        }
+
         public string AppTheme
         {
             get
@@ -58,9 +64,8 @@ namespace AutoParts_Store.UI.ViewModels
 
         public void ShowMainContent()
         {
-            // Метод для переключения на основной контент приложения после успешного входа в систему
-            ContentViewModel = _queriesVM; // Пример: Переключиться на обзор
-            _isAuthenticated = true;
+            IsAuthenticated = true;
+            ChangeContent(typeof(QueriesContentViewModel));
         }
 
         public void ChangeContent(Type viewModelType)
@@ -80,6 +85,7 @@ namespace AutoParts_Store.UI.ViewModels
                     HeaderText = "Редактирование записи";
                     break;
                 case Type view when view == typeof(LoginContentViewModel):
+                    IsAuthenticated = false;
                     ContentViewModel = _loginVM;
                     HeaderText = "Вход в систему";
                     break;

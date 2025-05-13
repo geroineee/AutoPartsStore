@@ -24,7 +24,22 @@ namespace AutoParts_Store.UI.ViewModels
         private QueryDefinition? _selectedQueryDefinition;
         private Dictionary<string, object> _parameterValues = new Dictionary<string, object>();
 
+        private string _header = "Название запроса";
+        private string _description = "Описание запроса";
+
         private ObservableCollection<ParameterViewModel> _parameters = [];
+
+        public string Header
+        {
+            get => _header;
+            set => this.RaiseAndSetIfChanged(ref _header, value);
+        }
+
+        public string Description
+        {
+            get => _description;
+            set => this.RaiseAndSetIfChanged(ref _description, value);
+        }
 
         public ObservableCollection<object> Data
         {
@@ -62,6 +77,9 @@ namespace AutoParts_Store.UI.ViewModels
             set
             {
                 this.RaiseAndSetIfChanged(ref _selectedQueryDefinition, value);
+                Header = SelectedQueryDefinition.DisplayName;
+                Description = SelectedQueryDefinition.Description;
+
                 if (value?.Variations != null && value.Variations.Any())
                 {
                     SelectedQueryVariation = value.Variations.First();
@@ -414,7 +432,7 @@ namespace AutoParts_Store.UI.ViewModels
             // Здесь заполняем QueryDefinitions списком запросов и их вариаций
             QueryDefinitions.Add(new QueryDefinition
             {
-                DisplayName = "Поставщики по категории и товару",
+                DisplayName = "1. Поставщики по категории и товару",
                 Description = "Получить перечень поставщиков определенной категории, поставляющих указанный вид товара.",
                 Variations = new List<QueryVariation>
                 {
@@ -425,8 +443,7 @@ namespace AutoParts_Store.UI.ViewModels
                         ExecutionFunction = async (parameters) =>
                         {
                             int productId = parameters[0] != null ? (int)parameters[0] : 0;
-                            int supplierCategory = parameters[1] != null ? (int)parameters[1] : 0;
-                            return await _queriesService.GetSupplierProvidesProductAsync(productId, supplierCategory);
+                            return await _queriesService.GetSupplierProvidesProductAsync(productId);
                         },
                         Parameters = new List<QueryParameter>
                         {
@@ -440,16 +457,6 @@ namespace AutoParts_Store.UI.ViewModels
                                 DisplayMember = "ProductName",
                                 ValueMember = "ProductId"
                             },
-                            new QueryParameter
-                            {
-                                DisplayName = "Категория поставщика",
-                                PropertyName = "SupplierCategory",
-                                ParameterType = typeof(int),
-                                InputType = QueryParameterType.ComboBox,
-                                SourceTable = "SupplierCategories",
-                                DisplayMember = "CategoryName",
-                                ValueMember = "CategoryId"
-                            }
                         }
                     },
                     new QueryVariation
@@ -459,12 +466,11 @@ namespace AutoParts_Store.UI.ViewModels
                         ExecutionFunction = async (parameters) =>
                         {
                             int productId = parameters[0] != null ? (int)parameters[0] : 0;
-                            int supplierCategory = parameters[1] != null ? (int)parameters[1] : 0;
-                            int value = parameters[2] != null ? int.Parse(parameters[2].ToString()) : 0;
-                            DateTime startDate = parameters[3] != null ? (DateTime)parameters[3] : DateTime.MinValue;
-                            DateTime endDate = parameters[4] != null ? (DateTime)parameters[4] : DateTime.MaxValue;
+                            int value = parameters[1] != null ? int.Parse(parameters[1].ToString()) : 0;
+                            DateTime startDate = parameters[2] != null ? (DateTime)parameters[2] : DateTime.MinValue;
+                            DateTime endDate = parameters[3] != null ? (DateTime)parameters[3] : DateTime.MaxValue;
 
-                            return await _queriesService.GetSupplierProvidesProductWithValueAsync(productId, supplierCategory, value, startDate, endDate);
+                            return await _queriesService.GetSupplierProvidesProductWithValueAsync(productId, value, startDate, endDate);
                         },
                         Parameters = new List<QueryParameter>
                         {
@@ -478,19 +484,80 @@ namespace AutoParts_Store.UI.ViewModels
                                 DisplayMember = "ProductName",
                                 ValueMember = "ProductId"
                             },
-                            new QueryParameter
-                            {
-                                DisplayName = "Категория поставщика",
-                                PropertyName = "SupplierCategory",
-                                ParameterType = typeof(int),
-                                InputType = QueryParameterType.ComboBox,
-                                SourceTable = "SupplierCategories",
-                                DisplayMember = "CategoryName",
-                                ValueMember = "CategoryId"
-                            },
                             new QueryParameter { DisplayName = "Объем поставки", PropertyName = "Value", ParameterType = typeof(int), InputType = QueryParameterType.NumericUpDown },
                             new QueryParameter { DisplayName = "Дата начала", PropertyName = "StartDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker },
                             new QueryParameter { DisplayName = "Дата окончания", PropertyName = "EndDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker }
+                        }
+                    }
+                }
+            });
+
+            QueryDefinitions.Add(new QueryDefinition
+            {
+                DisplayName = "2. Информация о деталях",
+                Description = "Получить сведения о конкретном виде деталей: какими поставщиками поставляется, их расценки, время поставки.",
+                Variations = new List<QueryVariation>
+                {
+                    new QueryVariation
+                    {
+                        DisplayName = "По указанному товару",
+                        Description = "Запрос с фильтром по ID товара.",
+                        ExecutionFunction = async (parameters) =>
+                        {
+                            int productId = parameters[0] != null ? (int)parameters[0] : 0;
+                            return await _queriesService.GetDetailProductInfo(productId);
+                        },
+                        Parameters = new List<QueryParameter>
+                        {
+                            new QueryParameter
+                            {
+                                DisplayName = "ID товара",
+                                PropertyName = "ProductId",
+                                ParameterType = typeof(int),
+                                InputType = QueryParameterType.ComboBox,
+                                SourceTable = "Products",
+                                DisplayMember = "ProductName",
+                                ValueMember = "ProductId"
+                            }
+                        }
+                    }
+                }
+            });
+
+            QueryDefinitions.Add(new QueryDefinition
+            {
+                DisplayName = "3. Покупатели, купившие товар",
+                Description = "Получить перечень и общее число покупателей, купивших указанный вид товара за некоторый период либо сделавших покупку товара в объеме, не менее указанного.",
+                Variations = new List<QueryVariation>
+                {
+                    new QueryVariation
+                    {
+                        DisplayName = "За период",
+                        Description = "Запрос покупателей с фильтром по периоду и минимальному количеству.",
+                        ExecutionFunction = async (parameters) =>
+                        {
+                            int productId = parameters[0] != null ? (int)parameters[0] : 0;
+                            DateTime startDate = parameters[1] != null ? (DateTime)parameters[1] : DateTime.MinValue;
+                            DateTime endDate = parameters[2] != null ? (DateTime)parameters[2] : DateTime.MaxValue;
+                            int? minQuantity = parameters[3] != null ? (int)parameters[3] : null;
+
+                            return await _queriesService.GetCustomerBoughtProduct(productId, startDate, endDate, minQuantity);
+                        },
+                        Parameters = new List<QueryParameter>
+                        {
+                            new QueryParameter
+                            {
+                                DisplayName = "Товар",
+                                PropertyName = "ProductId",
+                                ParameterType = typeof(int),
+                                InputType = QueryParameterType.ComboBox,
+                                SourceTable = "Products",
+                                DisplayMember = "ProductName",
+                                ValueMember = "ProductId"
+                            },
+                            new QueryParameter { DisplayName = "Дата начала", PropertyName = "StartDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker },
+                            new QueryParameter { DisplayName = "Дата окончания", PropertyName = "EndDate", ParameterType = typeof(DateTime), InputType = QueryParameterType.DatePicker },
+                            new QueryParameter { DisplayName = "Минимальное количество", PropertyName = "MinQuantity", ParameterType = typeof(int), InputType = QueryParameterType.NumericUpDown }
                         }
                     }
                 }
